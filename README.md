@@ -1,20 +1,25 @@
-ttt
-
-
-Structure
-
 mesh-adapt/
-  CMakeLists.txt
-  README.md
   include/
     mesh_adapt/
       core/
-      remesh2d/
-      remesh3d/
+        Mesh2D.hpp              # Topología básica (nodos + quads)
+        MeshTopology.hpp        # Análisis topológico (edges, boundaries)
+        
+      geometry/
+        Vec2.hpp                # Primitivas geométricas
+        Polyline2D.hpp          # Operaciones geométricas puras
+        
+      boundary/                 # NUEVO módulo
+        BoundaryLayer.hpp       # Manejo de capas de borde
+        ProjectionStrategy.hpp  # Estrategias de proyección
+        
+      remesh/
+        MartinsRemesher.hpp     # Orquestador principal
+        TransitionZone.hpp      # Zona de transición (Delaunay)
+        QuadSubdivision.hpp     # Subdivisión de quads
+        
       smoothing/
-      utils/
+        LaplacianSmoother.hpp
+        
   src/
-    example.cpp
-
-
--- meshadapt
+    (misma estructura)

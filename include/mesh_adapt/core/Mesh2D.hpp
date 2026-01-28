@@ -44,12 +44,33 @@ public:
 
     size_t num_nodes() const;
     size_t num_quads() const;
+
+
+    const std::vector<Node2D>& get_nodes() const { 
+        return nodes; 
+    }
     
+    const std::vector<Quad>& get_quads() const { 
+        return quads; 
+    }
+        
     std::vector<int> find_boundary_nodes() const;
     
     Vec2 node(int i) const {
         return nodes[i].x;
     }
+
+    std::vector<Vec2> get_node_positions() const {
+        std::vector<Vec2> positions;
+        positions.reserve(nodes.size());
+        for(const auto& node : nodes) {
+            positions.push_back(node.x);
+        }
+        return positions;
+    }
+        
+    private:
+    
     
 };
 

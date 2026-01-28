@@ -19,6 +19,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(mesh_adapt 
     src/mesh_adapt/core/Mesh2D.cpp
     src/mesh_adapt/geometry/Polyline2D.cpp
+    src/mesh_adapt/boundary/Boundary2D.cpp
 )
 
 # Public include directory

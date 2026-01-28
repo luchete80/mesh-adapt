@@ -18,6 +18,8 @@ public:
     double distance(const Vec2& p) const override;
     Vec2 project(const Vec2& p) const override;
     std::vector<Vec2> sample(int n) const override;
+    const std::vector<Vec2>& get_points() const { return pts; }  // NUEVO
+    
 };
 
 }
