@@ -6,10 +6,6 @@ project(mesh_adapt
     LANGUAGES CXX
 )
 
-target_include_directories(mesh_adapt INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
 # -----------------------------
 # C++ Standard
 # -----------------------------
@@ -20,12 +16,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # -----------------------------
 # Library target
 # -----------------------------
-add_library(mesh_adapt INTERFACE)
+add_library(mesh_adapt 
+    src/mesh_adapt/core/Mesh2D.cpp
+    src/mesh_adapt/geometry/Polyline2D.cpp
+)
 
 # Public include directory
-target_include_directories(mesh_adapt INTERFACE
+target_include_directories(mesh_adapt PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+
 
 # Optional warnings (only if used as main project)
 if (PROJECT_IS_TOP_LEVEL)
@@ -37,6 +37,9 @@ endif()
 # -----------------------------
 add_executable(example
     src/example.cpp
+)
+target_include_directories(example PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 target_link_libraries(example PRIVATE mesh_adapt)
