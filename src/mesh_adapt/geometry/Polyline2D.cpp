@@ -1,73 +1,70 @@
 #include "mesh_adapt/geometry/Polyline2D.hpp"
+#include <algorithm>
 #include <limits>
+#include <cmath>
 
 namespace mesh_adapt {
 
-
 double Polyline2D::distance(const Vec2& p) const {
-
-    if (pts.size() < 2)
-        return 1e30;
-
-    double dmin = std::numeric_limits<double>::max();
-
-    for (size_t i = 0; i < pts.size() - 1; ++i) {
-
+    double min_dist = std::numeric_limits<double>::max();
+    
+    for(size_t i = 0; i + 1 < pts.size(); i++) {
         Vec2 a = pts[i];
         Vec2 b = pts[i+1];
-
         Vec2 ab = b - a;
-        Vec2 ap = p - a;
-
-        double t = dot(ap, ab) / norm2(ab);
-
-        // clamp to segment
-        if (t < 0.0) t = 0.0;
-        if (t > 1.0) t = 1.0;
-
+        
+        double denom = dot(ab, ab);
+        if(denom < 1e-14) {  // segmento degenerado
+            double d = ::mesh_adapt::distance(p, a);
+            min_dist = std::min(min_dist, d);
+            continue;
+        }
+        
+        double t = dot(p - a, ab) / denom;
+        t = std::clamp(t, 0.0, 1.0);
+        
         Vec2 closest = a + t * ab;
-
-        double d = norm2(p - closest);
-
-        if (d < dmin)
-            dmin = d;
+        double d = ::mesh_adapt::distance(p, closest);
+        min_dist = std::min(min_dist, d);
     }
-
-    return dmin;
+    
+    return min_dist;
 }
 
 Vec2 Polyline2D::project(const Vec2& p) const {
-
-    if (pts.size() < 2)
-        return p;
-
-    double dmin = std::numeric_limits<double>::max();
-    Vec2 best = p;
-
-    for (size_t i = 0; i < pts.size() - 1; ++i) {
-
+    Vec2 closest_point = pts[0];  // ← Initializer with first point
+    double min_dist = std::numeric_limits<double>::max();
+    
+    for(size_t i = 0; i + 1 < pts.size(); i++) {
         Vec2 a = pts[i];
         Vec2 b = pts[i+1];
-
         Vec2 ab = b - a;
-        Vec2 ap = p - a;
-
-        double t = dot(ap, ab) / norm2(ab);
-
-        if (t < 0.0) t = 0.0;
-        if (t > 1.0) t = 1.0;
-
-        Vec2 closest = a + t * ab;
-        double d = norm2(p - closest);
-
-        if (d < dmin) {
-            dmin = d;
-            best = closest;
+        
+        double denom = dot(ab, ab);
+        if(denom < 1e-14) {  // segmento degenerado
+            double d = ::mesh_adapt::distance(p, a);
+            if(d < min_dist) {
+                min_dist = d;
+                closest_point = a;
+            }
+            continue;
+        }
+        
+        double t = dot(p - a, ab) / denom;
+        t = std::clamp(t, 0.0, 1.0);
+        
+        Vec2 proj = a + t * ab;
+        double d = ::mesh_adapt::distance(p, proj);
+        
+        if(d < min_dist) {
+            min_dist = d;
+            closest_point = proj;
         }
     }
-
-    return best;
+    
+    return closest_point;
 }
+
 
 std::vector<Vec2> Polyline2D::sample(int n) const {
     (void)n; // unused
