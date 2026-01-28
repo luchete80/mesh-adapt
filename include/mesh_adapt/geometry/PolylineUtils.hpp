@@ -95,13 +95,30 @@ inline std::vector<size_t> extract_boundary_nodes(const Mesh2D& mesh) {
 }
 
 // =========================
-// Construir Polyline2D a partir de Mesh2D
+// Polyline2D from Mesh2D
 // =========================
 inline Polyline2D build_polyline_from_mesh(const Mesh2D& mesh) {
     std::vector<size_t> boundary_idx = extract_boundary_nodes(mesh);
     std::vector<Vec2> pts;
     for(size_t i : boundary_idx) pts.push_back(mesh.node(i));
+
+    // Cerrar loop si no está cerrado
+    if(pts.front() != pts.back())
+        pts.push_back(pts.front());
+
+    // Calcular área firmada (shoelace)
+    double area = 0.0;
+    for(size_t i = 0; i < pts.size() - 1; ++i) {
+        area += (pts[i].x * pts[i+1].y) - (pts[i+1].x * pts[i].y);
+    }
+
+    // Si área < 0, es CW, invertimos para CCW
+    if(area < 0.0) {
+        std::reverse(pts.begin(), pts.end());
+    }
+
     return Polyline2D(pts);
 }
+
 
 } // namespace mesh_adapt

@@ -38,6 +38,14 @@ struct Vec2 {
         return std::sqrt(dx*dx + dy*dy);
     }
 
+
+    bool operator==(const Vec2& o) const {
+        constexpr double tol = 1e-12;
+        return std::abs(x - o.x) < tol && std::abs(y - o.y) < tol;
+    }
+
+    bool operator!=(const Vec2& o) const { return !(*this == o); }
+    
 };
 
 inline Vec2 operator+(const Vec2& a, const Vec2& b) {
