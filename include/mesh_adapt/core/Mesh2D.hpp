@@ -24,10 +24,10 @@ struct Quad {
 
     const int& operator[](int i) const {
         switch(i) {
-            case 0: return ids[1];
-            case 1: return ids[2];
-            case 2: return ids[3];
-            case 3: return ids[4];
+            case 0: return ids[0];
+            case 1: return ids[1];
+            case 2: return ids[2];
+            case 3: return ids[3];
             default: throw std::out_of_range("Quad index out of range");
         }
   };

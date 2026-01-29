@@ -1,9 +1,15 @@
 #include <iostream>
 #include <iomanip>
 #include "mesh_adapt/core/Mesh2D.hpp"
+#include "mesh_adapt/core/Mesh2DUtils.hpp"
 #include "mesh_adapt/geometry/Polyline2D.hpp"
 #include "mesh_adapt/boundary/Boundary2D.hpp"
 #include "mesh_adapt/geometry/PolylineUtils.hpp"
+
+#include "mesh_adapt/geometry/ContourUtils.hpp"
+#include "mesh_adapt/geometry/PolygonUtils.hpp"
+
+using namespace mesh_adapt;
 
 int main() {
     std::cout << "========================================\n";
@@ -184,6 +190,41 @@ int main() {
     std::cout << "  Projected nodes:   " << proj_nodes.size() << "\n";
     std::cout << "  Transition points: " << trans_points.size() << "\n";
     std::cout << "========================================\n";
+    
+    
+    
+    /////////////////////////////////////////////////////////////////////
+    /////////////////////// CONE EXAMPLE ////////////////////////////////
+    double SL = 0.25;
+    
+    std::vector<mesh_adapt::Vec2> cone_pts = {
+    {0.0, 0.0},   // axis bottom
+    {2.0, 0.0},   // base radius
+    {1.0, 4.0},   // cone side tip
+    {0.0, 4.0},   // axis top
+    {0.0, 0.0}    // close loop
+    };
+    mesh_adapt::Polyline2D cone_contour(cone_pts);
+
+    auto bbox = compute_bbox(cone_pts);
+
+    // padding extra
+    double pad = 0.5;
+
+    Mesh2D mesh_bg = generate_structured_grid(
+        bbox.xmin - pad,
+        bbox.xmax + pad,
+        bbox.ymin - pad,
+        bbox.ymax + pad,
+        SL
+    );    
+
+    // 4. Keep only inside nodes
+    Mesh2D inside_mesh = filter_nodes_inside_contour(mesh_bg, cone_contour);
+
+    // 5. Remove nodes too close to contour (future)
+    Mesh2D band_mesh = remove_nodes_near_contour(inside_mesh, cone_contour, SL);
+    
     
     return 0;
 }

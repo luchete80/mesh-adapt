@@ -1,3 +1,11 @@
+#pragma once
+
+#include "Mesh2D.hpp"
+#include "mesh_adapt/geometry/Polyline2D.hpp"
+#include "mesh_adapt/geometry/PolygonUtils.hpp"
+
+namespace mesh_adapt {
+
 Mesh2D generate_structured_grid(double x_min, double x_max,
                                 double y_min, double y_max,
                                 double SL) {
@@ -40,4 +48,68 @@ std::vector<int> filter_near_boundary_nodes(
         }
     }
     return near_nodes;
+}
+
+Mesh2D filter_nodes_inside_contour(
+    const Mesh2D& mesh,
+    const Polyline2D& contour
+)
+{
+    Mesh2D new_mesh;
+
+    const auto& pts = contour.get_points();
+
+    // map old → new
+    std::vector<int> old_to_new(mesh.num_nodes(), -1);
+
+    // 1. Copiar solo nodos interiores
+    for(size_t i=0; i<mesh.num_nodes(); ++i)
+    {
+        Vec2 p = mesh.node(i);
+
+        if(point_in_polygon(p, pts)) {
+            int new_id = new_mesh.add_node(p.x, p.y);
+            old_to_new[i] = new_id;
+        }
+    }
+
+    // 2. Copiar solo quads válidos
+    for(const auto& q : mesh.get_quads())
+    {
+        int a = old_to_new[q[0]];
+        int b = old_to_new[q[1]];
+        int c = old_to_new[q[2]];
+        int d = old_to_new[q[3]];
+
+        if(a!=-1 && b!=-1 && c!=-1 && d!=-1)
+            new_mesh.add_quad(a,b,c,d);
+    }
+
+    return new_mesh;
+}
+
+Mesh2D remove_nodes_near_contour(
+    const Mesh2D& mesh,
+    const Contour2D& contour,
+    double SL
+)
+{
+    Mesh2D new_mesh;
+    std::vector<int> old_to_new(mesh.num_nodes(), -1);
+
+    for(size_t i=0; i<mesh.num_nodes(); ++i)
+    {
+        Vec2 p = mesh.node(i);
+
+        if(contour.distance(p) > SL) {
+            int new_id = new_mesh.add_node(p.x, p.y);
+            old_to_new[i] = new_id;
+        }
+    }
+
+    // reconstruir quads válidos igual que antes
+    return new_mesh;
+}
+
+
 }
