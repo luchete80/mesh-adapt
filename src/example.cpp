@@ -195,6 +195,10 @@ int main() {
     
     /////////////////////////////////////////////////////////////////////
     /////////////////////// CONE EXAMPLE ////////////////////////////////
+    std::cout << "\n========================================\n";
+    std::cout << "   CONE EXAMPLE \n";
+    std::cout << "========================================\n";    
+    
     double SL = 0.25;
     
     std::vector<mesh_adapt::Vec2> cone_pts = {
@@ -206,10 +210,29 @@ int main() {
     };
     mesh_adapt::Polyline2D cone_contour(cone_pts);
 
+    std::cout << "\n[1] Cone contour points:\n";
+    for(size_t i = 0; i < cone_pts.size(); ++i) {
+        std::cout << "   contour[" << i << "] = " << cone_pts[i] << "\n";
+    }
+
+    // ------------------------------------------------------------
+    // 2. Compute bounding box
+    // ------------------------------------------------------------
     auto bbox = compute_bbox(cone_pts);
+
+    std::cout << "\n[2] Bounding box:\n";
+    std::cout << "   xmin = " << bbox.xmin << "\n";
+    std::cout << "   xmax = " << bbox.xmax << "\n";
+    std::cout << "   ymin = " << bbox.ymin << "\n";
+    std::cout << "   ymax = " << bbox.ymax << "\n";
 
     // padding extra
     double pad = 0.5;
+
+    // ------------------------------------------------------------
+    // 3. Generate structured background mesh
+    // ------------------------------------------------------------
+    std::cout << "\n[3] Generating structured background grid...\n";
 
     Mesh2D mesh_bg = generate_structured_grid(
         bbox.xmin - pad,
@@ -219,12 +242,80 @@ int main() {
         SL
     );    
 
+    std::cout << "   Background mesh created:\n";
+    std::cout << "     Nodes = " << mesh_bg.num_nodes() << "\n";
+    std::cout << "     Quads = " << mesh_bg.num_quads() << "\n";
+
+    // Print a few sample nodes
+    std::cout << "\n   Sample background nodes:\n";
+    for(size_t i = 0; i < std::min<size_t>(10, mesh_bg.num_nodes()); ++i) {
+        std::cout << "     node[" << i << "] = " << mesh_bg.node(i) << "\n";
+    }
+
+
+    // ------------------------------------------------------------
+    // 4. Filter nodes inside contour
+    // ------------------------------------------------------------
+    std::cout << "\n[4] Filtering nodes inside cone contour...\n";
+
     // 4. Keep only inside nodes
     Mesh2D inside_mesh = filter_nodes_inside_contour(mesh_bg, cone_contour);
 
+    std::cout << "   Inside mesh result:\n";
+    std::cout << "     Nodes kept = " << inside_mesh.num_nodes() << "\n";
+    std::cout << "     Quads kept = " << inside_mesh.num_quads() << "\n";
+
+    std::cout << "   Removed nodes = "
+              << mesh_bg.num_nodes() - inside_mesh.num_nodes()
+              << "\n";
+
+    // Print a few inside nodes
+    std::cout << "\n   Sample inside nodes:\n";
+    for(size_t i = 0; i < std::min<size_t>(10, inside_mesh.num_nodes()); ++i) {
+        std::cout << "     inside_node[" << i << "] = " << inside_mesh.node(i) << "\n";
+    }
+
+    // ------------------------------------------------------------
+    // 5. Remove nodes too close to contour (boundary band)
+    // ------------------------------------------------------------
+    std::cout << "\n[5] Removing nodes near contour (distance < SL)...\n";
+    std::cout << "   Threshold SL = " << SL << "\n";
+              
     // 5. Remove nodes too close to contour (future)
     Mesh2D band_mesh = remove_nodes_near_contour(inside_mesh, cone_contour, SL);
-    
+
+
+    std::cout << "   Band mesh result:\n";
+    std::cout << "     Nodes kept = " << band_mesh.num_nodes() << "\n";
+    std::cout << "     Quads kept = " << band_mesh.num_quads() << "\n";
+
+    std::cout << "   Removed near-boundary nodes = "
+              << inside_mesh.num_nodes() - band_mesh.num_nodes()
+              << "\n";
+
+    // ------------------------------------------------------------
+    // 6. Debug: print some removed nodes (optional)
+    // ------------------------------------------------------------
+    std::cout << "\n[6] Debug check: nodes close to boundary\n";
+
+    int printed = 0;
+    for(size_t i = 0; i < inside_mesh.num_nodes(); ++i)
+    {
+        mesh_adapt::Vec2 p = inside_mesh.node(i);
+        double d = cone_contour.distance(p);
+
+        if(d < SL) {
+            std::cout << "   removed candidate: p=" << p
+                      << " dist=" << d << "\n";
+            printed++;
+        }
+
+        if(printed > 10) break;
+    }
+
+    std::cout << "\n========================================\n";
+    std::cout << "   CONE EXAMPLE FINISHED\n";
+    std::cout << "========================================\n";    
     
     return 0;
 }
