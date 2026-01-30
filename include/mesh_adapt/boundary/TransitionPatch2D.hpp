@@ -77,32 +77,69 @@ struct TransitionPatch2D
 
     //~ return patch;
 //~ }
-
-///// EXTRACT BOUNDARY FROM BAND INTERNAL MESH
-///// AND BOUNDARY (SHOULD BE ORDERED)
 TransitionPatch2D build_transition_patch_from_band(
     const Mesh2D& band_mesh,
-    const Polyline2D& contour)
+    const Polyline2D& contour,
+    double SL
+)
 {
     TransitionPatch2D patch;
 
-    // ---- ordered ring boundary ----
+    // ------------------------------------------------------------
+    // 1. Ordered ring boundary nodes
+    // ------------------------------------------------------------
     auto ring_ids = band_mesh.find_ordered_boundary_nodes();
+
+    std::cout << "[TransitionPatch] Ring nodes = "
+              << ring_ids.size() << "\n";
 
     std::vector<Vec2> ring_pts;
     std::vector<Vec2> proj_pts;
 
+    ring_pts.reserve(ring_ids.size());
+    proj_pts.reserve(ring_ids.size());
+
+    patch.proj_from_ring_gid.clear();
+
+    // minimum spacing filter
+    double rmin = 0.5 * SL;
+
+    // ------------------------------------------------------------
+    // 2. Project ring nodes onto contour (ordered)
+    // ------------------------------------------------------------
     for(int gid : ring_ids)
     {
         Vec2 p = band_mesh.node(gid);
         Vec2 q = contour.project(p);
 
+        // ---- filter projected points too close ----
+        bool too_close = false;
+
+        for(const auto& prev : proj_pts)
+        {
+            if((prev - q).norm() < rmin)
+            {
+                too_close = true;
+                break;
+            }
+        }
+
+        if(too_close)
+            continue;
+
+        // ---- keep both ring + projected in sync ----
         ring_pts.push_back(p);
         proj_pts.push_back(q);
 
         patch.proj_from_ring_gid.push_back(gid);
     }
 
+    std::cout << "[TransitionPatch] Projected kept = "
+              << proj_pts.size() << "\n";
+
+    // ------------------------------------------------------------
+    // 3. Store as polylines
+    // ------------------------------------------------------------
     patch.ring_polyline = Polyline2D(ring_pts);
     patch.proj_polyline = Polyline2D(proj_pts);
 

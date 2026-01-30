@@ -5,6 +5,7 @@
 #include "mesh_adapt/geometry/Polyline2D.hpp"
 #include "mesh_adapt/boundary/Boundary2D.hpp"
 #include "mesh_adapt/boundary/TransitionPatch2D.hpp"
+#include "mesh_adapt/boundary/Delaunay2D.hpp"
 #include "mesh_adapt/geometry/PolylineUtils.hpp"
 
 #include "mesh_adapt/geometry/ContourUtils.hpp"
@@ -154,7 +155,7 @@ int main() {
 
     // 1. Boundary ring del band mesh
     std::vector<int> ring_nodes =
-        band_mesh.find_boundary_nodes();
+        band_mesh.find_ordered_boundary_nodes();
 
     std::cout << "   Ring boundary nodes = "
               << ring_nodes.size() << "\n";
@@ -167,6 +168,7 @@ int main() {
 
     for(int gid : ring_nodes)
     {
+        std::cout << "Ring node "<<gid<<std::endl;
         Vec2 p = band_mesh.node(gid);
 
         // proyección geométrica
@@ -207,7 +209,8 @@ int main() {
     TransitionPatch2D patch =
         build_transition_patch_from_band(
             band_mesh,
-            cone_contour
+            cone_contour,
+            SL
         );
 
     // ------------------------------------------------------------
@@ -241,7 +244,24 @@ int main() {
                   << "\n";
     }
 
+
+      export_polyline_to_vtk(cone_contour, "cone_polyline.vtk");
+
+      export_polyline_to_vtk(patch.ring_polyline, "ring.vtk");
+
+      export_polyline_to_vtk(patch.proj_polyline, "proj.vtk");
+
     std::cout << "----------------------------------------\n";
 
+    Delaunay2D dt;
+    dt.build_from_two_polylines(patch.proj_polyline,patch.ring_polyline); //outer, inner
+
+    dt.triangulate();
+
+    patch.triangles = dt.get_triangles();
+
+    export_triangles_to_vtk(patch.points, patch.triangles,
+                            "patch_tris.vtk");
+                            
     return 0;
 }
