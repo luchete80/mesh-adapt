@@ -8,6 +8,8 @@
 
 #include "mesh_adapt/geometry/ContourUtils.hpp"
 #include "mesh_adapt/geometry/PolygonUtils.hpp"
+#include "mesh_adapt/io/VTKWriter2D.hpp"
+
 
 using namespace mesh_adapt;
 
@@ -312,6 +314,51 @@ int main() {
 
         if(printed > 10) break;
     }
+
+
+    export_mesh_to_vtk(mesh_bg, "background.vtk");
+    export_mesh_to_vtk(inside_mesh,     "inside.vtk");
+    export_mesh_to_vtk(band_mesh,       "band.vtk");
+    
+        
+    // ------------------------------------------------------------
+    // 7. Generate projected nodes (Martins projection)
+    // ------------------------------------------------------------
+    std::cout << "\n[7] Generating projected nodes on cone contour...\n";
+
+    double rmax = 1.6 * SL;
+
+    // nodos cercanos al contorno
+    auto near_nodes =
+        filter_near_boundary_nodes(inside_mesh, cone_contour, rmax);
+
+    std::cout << "   Near-boundary nodes found = "
+              << near_nodes.size() << "\n";
+
+    // proyectarlos
+    std::vector<Vec2> _proj_nodes;
+    _proj_nodes.reserve(near_nodes.size());
+
+    for(int idx : near_nodes)
+    {
+        Vec2 p = inside_mesh.node(idx);
+
+        // proyección geométrica
+        Vec2 q = cone_contour.project(p);
+
+        _proj_nodes.push_back(q);
+    }
+
+    // imprimir algunos
+    for(size_t i=0; i<std::min<size_t>(10, _proj_nodes.size()); ++i)
+    {
+        std::cout << "   proj[" << i << "] = "
+                  << _proj_nodes[i] << "\n";
+    }
+
+    // exportar para ver en ParaView
+    export_points_vtk(_proj_nodes, "proj_nodes.vtk");
+    export_points_vtk(cone_pts,   "cone_contour.vtk");
 
     std::cout << "\n========================================\n";
     std::cout << "   CONE EXAMPLE FINISHED\n";
