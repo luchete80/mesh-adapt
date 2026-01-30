@@ -5,31 +5,31 @@
 
 namespace mesh_adapt {
 
-void Boundary2D::build_transition_points(
-    const std::vector<Vec2>& mesh_nodes,
-    const std::vector<Vec2>& proj_nodes,
-    std::vector<Vec2>& trans_points,
-    std::vector<size_t>& trans_to_global
-) const {
-    trans_points.clear();
-    trans_to_global.clear();
+//~ void Boundary2D::build_transition_points(
+    //~ const std::vector<Vec2>& mesh_nodes,
+    //~ const std::vector<Vec2>& proj_nodes,
+    //~ std::vector<Vec2>& trans_points,
+    //~ std::vector<size_t>& trans_to_global
+//~ ) const {
+    //~ trans_points.clear();
+    //~ trans_to_global.clear();
     
-    // 1. Agregar boundary nodes del grid
-    for(const auto& bn : boundary_nodes_) {
-        trans_points.push_back(mesh_nodes[bn.mesh_idx]);
-        trans_to_global.push_back(bn.mesh_idx);
-    }
+    //~ // 1. Agregar boundary nodes del grid
+    //~ for(const auto& bn : boundary_nodes_) {
+        //~ trans_points.push_back(mesh_nodes[bn.mesh_idx]);
+        //~ trans_to_global.push_back(bn.mesh_idx);
+    //~ }
     
-    // 2. Agregar projected nodes (NUEVOS nodos)
-    size_t new_node_start = mesh_nodes.size();
-    for(size_t i = 0; i < proj_nodes.size(); i++) {
-        trans_points.push_back(proj_nodes[i]);
-        trans_to_global.push_back(new_node_start + i);
-    }
+    //~ // 2. Agregar projected nodes (NUEVOS nodos)
+    //~ size_t new_node_start = mesh_nodes.size();
+    //~ for(size_t i = 0; i < proj_nodes.size(); i++) {
+        //~ trans_points.push_back(proj_nodes[i]);
+        //~ trans_to_global.push_back(new_node_start + i);
+    //~ }
     
-    // Nota: los nodos del contour se pueden agregar opcionalmente
-    // según init_boundary_points() del Python
-}
+    //~ // Nota: los nodos del contour se pueden agregar opcionalmente
+    //~ // según init_boundary_points() del Python
+//~ }
 
 void Boundary2D::find_boundary_nodes_from_quads(
     const std::vector<Vec2>& nodes,

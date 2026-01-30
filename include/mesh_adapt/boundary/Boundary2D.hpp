@@ -3,18 +3,10 @@
 #include "mesh_adapt/geometry/Vec2.hpp"
 #include "mesh_adapt/geometry/Polyline2D.hpp"
 #include "mesh_adapt/core/Mesh2D.hpp"  // para Quad
+#include "mesh_adapt/core/Node2D.hpp"
 
 namespace mesh_adapt {
 
-// Flags de nodos (del código Python)
-enum NodeFlag {
-    NODE_PROJECTED = 0,
-    NODE_CRITICAL = 1,   // nodos del contorno original
-    NODE_INTERIOR = 2,
-    NODE_AXIS = 3,
-    NODE_EXTERNAL = 4,
-    NODE_SUBDIVIDED = 5
-};
 
 struct BoundaryNode {
     size_t mesh_idx;      // índice en el array global de nodos

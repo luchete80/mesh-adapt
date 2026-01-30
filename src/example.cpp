@@ -4,6 +4,7 @@
 #include "mesh_adapt/core/Mesh2DUtils.hpp"
 #include "mesh_adapt/geometry/Polyline2D.hpp"
 #include "mesh_adapt/boundary/Boundary2D.hpp"
+#include "mesh_adapt/boundary/TransitionPatch2D.hpp"
 #include "mesh_adapt/geometry/PolylineUtils.hpp"
 
 #include "mesh_adapt/geometry/ContourUtils.hpp"
@@ -14,186 +15,7 @@
 using namespace mesh_adapt;
 
 int main() {
-    std::cout << "========================================\n";
-    std::cout << "  Mesh Adapt - Boundary2D Test\n";
-    std::cout << "========================================\n\n";
-    
-    // ============================================
-    // 1. Create mesh (single quad)
-    // ============================================
-    std::cout << "1. Creating mesh...\n";
-    mesh_adapt::Mesh2D mesh;  // ✅ tipo claro
-    mesh.add_node(0.0, 0.0);
-    mesh.add_node(1.0, 0.0);
-    mesh.add_node(1.0, 1.0);
-    mesh.add_node(0.0, 1.0);
-    mesh.add_quad(0, 1, 2, 3);
-    
-    std::cout << "   Mesh nodes: " << mesh.num_nodes() << "\n";
-    std::cout << "   Mesh quads: " << mesh.num_quads() << "\n";
-    
-    // Mostrar nodos
-    std::cout << "\n   Node positions:\n";
-    std::vector<mesh_adapt::Vec2> node_positions = mesh.get_node_positions();  
-    
-    for(size_t i = 0; i < node_positions.size(); i++) {  
-        std::cout << "     node[" << i << "] = " << node_positions[i] << "\n";
-    }
-    
-    // ============================================
-    // 2. Create geometric contour
-    // ============================================
-    std::cout << "\n2. Creating contour...\n";
-    
-    //// EXPLICIT BOUNDARY
-    
-    mesh_adapt::Mesh2D mesh_cont;
-    mesh_cont.add_node(0.0, 0.0);
-    mesh_cont.add_node(1.0, 0.0);
-    mesh_cont.add_node(1.0, 1.0);
-    mesh_cont.add_node(0.0, 1.0);
-    mesh_cont.add_quad(0, 1, 2, 3);
-    
-    mesh_adapt::Polyline2D boundary_poly = mesh_adapt::build_polyline_from_mesh(mesh_cont);
 
-    std::cout << "Boundary polyline points:\n";
-    for(const auto& p : boundary_poly.get_points()) {
-        std::cout << p << "\n";
-    }
-    //std::vector<Vec2> 
-    auto contour_pts = boundary_poly.get_points();
-
-    
-
-    // /// KNOWN BOUNDARY /////
-    // std::vector<mesh_adapt::Vec2> contour_pts = {
-        // {0.0, 0.0},
-        // {2.0, 0.0},
-        // {2.0, 2.0},
-        // {0.0, 2.0},
-        // {0.0, 0.0}
-    // };
-    // mesh_adapt::Polyline2D contour(contour_pts);  
-    
-    
-    // std::cout << "   Contour points: " << contour_pts.size() << "\n";
-    // for(size_t i = 0; i < contour_pts.size(); i++) {
-        // std::cout << "     contour[" << i << "] = " << contour_pts[i] << "\n";
-    // }
-    
-    //////////////////////////////////////////
-    mesh_adapt::Polyline2D contour(contour_pts);
-    
-    // ============================================
-    // 3. Test geometric operations
-    // ============================================
-    std::cout << "\n3. Testing geometric operations...\n";
-    mesh_adapt::Vec2 test_point = {1.0, 1.0};  
-    double dist = contour.distance(test_point);  
-    mesh_adapt::Vec2 proj = contour.project(test_point);  
-    
-    std::cout << "   Test point: " << test_point << "\n";
-    std::cout << "   Distance to contour: " << dist << "\n";
-    std::cout << "   Projection onto contour: " << proj << "\n";
-    
-    // ============================================
-    // 4. BOUNDARY LAYER
-    // ============================================
-    std::cout << "\n4. Analyzing boundary layer...\n";
-    mesh_adapt::Boundary2D boundary(contour);  
-    
-    boundary.find_boundary_nodes_from_quads(node_positions, mesh.get_quads());
-    
-    // ✅ BUEN uso de auto (referencia const, tipo largo)
-    const auto& boundary_nodes = boundary.get_boundary_nodes();
-    std::cout << "   Boundary nodes found: " << boundary_nodes.size() << "\n";
-    
-    if(boundary_nodes.empty()) {
-        std::cout << "   WARNING: No boundary nodes found!\n";
-    } else {
-        std::cout << "\n   Boundary node details:\n";
-
-        for(const auto& bn : boundary_nodes) {
-            mesh_adapt::Vec2 pos = node_positions[bn.mesh_idx];  
-            mesh_adapt::Vec2 projected = contour.project(pos);   
-            double dist_to_contour = contour.distance(pos);      
-            
-            std::cout << "     mesh_idx=" << bn.mesh_idx
-                      << " pos=" << pos
-                      << " -> proj=" << projected
-                      << " (dist=" << std::fixed << std::setprecision(4) 
-                      << dist_to_contour << ")\n";
-        }
-    }
-    
-    // ============================================
-    // 5. Generate projected nodes
-    // ============================================
-    std::cout << "\n5. Generating projected nodes (Martins)...\n";
-    mesh_adapt::ProjectionParams params(0.25); 
-    
-    std::cout << "   Projection parameters:\n";
-    std::cout << "     SL = " << params.SL << "\n";
-    std::cout << "     rmin = " << params.rmin << "\n";
-    std::cout << "     rmax = " << params.rmax << "\n";
-    
-    std::vector<mesh_adapt::Vec2> proj_nodes = 
-        boundary.generate_projected_nodes(node_positions, params); 
-    
-    std::cout << "\n   Projected nodes: " << proj_nodes.size() << "\n";
-    
-    if(proj_nodes.empty()) {
-        std::cout << "   INFO: No projected nodes generated\n";
-    } else {
-        std::cout << "\n   Projected node coordinates:\n";
-        for(size_t i = 0; i < proj_nodes.size(); i++) {
-            std::cout << "     proj_node[" << i << "] = " << proj_nodes[i] << "\n";
-        }
-    }
-    
-    // ============================================
-    // 6. Build transition points
-    // ============================================
-    std::cout << "\n6. Building transition point set...\n";
-    std::vector<mesh_adapt::Vec2> trans_points;     
-    std::vector<size_t> trans_to_global;             
-    
-    boundary.build_transition_points(
-        node_positions,
-        proj_nodes,
-        trans_points,
-        trans_to_global
-    );
-    
-    std::cout << "   Transition points: " << trans_points.size() << "\n";
-    std::cout << "   Composition:\n";
-    std::cout << "     - Boundary nodes: " << boundary_nodes.size() << "\n";
-    std::cout << "     - Projected nodes: " << proj_nodes.size() << "\n";
-    std::cout << "     - Total: " << trans_points.size() << "\n";
-    
-    if(!trans_points.empty()) {
-        std::cout << "\n   Transition point mapping:\n";
-        for(size_t i = 0; i < trans_points.size(); i++) {
-            std::cout << "     trans[" << i << "] -> global[" 
-                      << trans_to_global[i] << "] = " 
-                      << trans_points[i] << "\n";
-        }
-    }
-    
-    // ============================================
-    // Summary
-    // ============================================
-    std::cout << "\n========================================\n";
-    std::cout << "  Summary\n";
-    std::cout << "========================================\n";
-    std::cout << "  Mesh nodes:        " << mesh.num_nodes() << "\n";
-    std::cout << "  Mesh quads:        " << mesh.num_quads() << "\n";
-    std::cout << "  Boundary nodes:    " << boundary_nodes.size() << "\n";
-    std::cout << "  Projected nodes:   " << proj_nodes.size() << "\n";
-    std::cout << "  Transition points: " << trans_points.size() << "\n";
-    std::cout << "========================================\n";
-    
-    
     
     /////////////////////////////////////////////////////////////////////
     /////////////////////// CONE EXAMPLE ////////////////////////////////
@@ -286,6 +108,9 @@ int main() {
     // 5. Remove nodes too close to contour (future)
     Mesh2D band_mesh = remove_nodes_near_contour(inside_mesh, cone_contour, SL);
 
+    //~ auto band_boundary = ///std::vector<int> 
+        //~ find_boundary_nodes(band_mesh);
+        
 
     std::cout << "   Band mesh result:\n";
     std::cout << "     Nodes kept = " << band_mesh.num_nodes() << "\n";
@@ -320,49 +145,103 @@ int main() {
     export_mesh_to_vtk(inside_mesh,     "inside.vtk");
     export_mesh_to_vtk(band_mesh,       "band.vtk");
     
-        
+            
     // ------------------------------------------------------------
     // 7. Generate projected nodes (Martins projection)
+    //    PROYECTAR SOLO EL BORDE DEL BAND MESH
     // ------------------------------------------------------------
-    std::cout << "\n[7] Generating projected nodes on cone contour...\n";
+    std::cout << "\n[7] Generating projected nodes from band boundary...\n";
 
-    double rmax = 1.6 * SL;
+    // 1. Boundary ring del band mesh
+    std::vector<int> ring_nodes =
+        band_mesh.find_boundary_nodes();
 
-    // nodos cercanos al contorno
-    auto near_nodes =
-        filter_near_boundary_nodes(inside_mesh, cone_contour, rmax);
+    std::cout << "   Ring boundary nodes = "
+              << ring_nodes.size() << "\n";
 
-    std::cout << "   Near-boundary nodes found = "
-              << near_nodes.size() << "\n";
+    // 2. Proyectarlos al contour geométrico
+    std::vector<Vec2> proj_nodes;
+    proj_nodes.reserve(ring_nodes.size());
 
-    // proyectarlos
-    std::vector<Vec2> _proj_nodes;
-    _proj_nodes.reserve(near_nodes.size());
+    double rmin = 0.5 * SL;
 
-    for(int idx : near_nodes)
+    for(int gid : ring_nodes)
     {
-        Vec2 p = inside_mesh.node(idx);
+        Vec2 p = band_mesh.node(gid);
 
         // proyección geométrica
         Vec2 q = cone_contour.project(p);
 
-        _proj_nodes.push_back(q);
+        // --------------------------------------------------------
+        // Filtrar projected nodes demasiado cercanos
+        // --------------------------------------------------------
+        bool too_close = false;
+        for(const auto& pk : proj_nodes)
+        {
+            if((pk - q).norm() < rmin)
+            {
+                too_close = true;
+                break;
+            }
+        }
+
+        if(too_close)
+            continue;
+
+        proj_nodes.push_back(q);
     }
 
-    // imprimir algunos
-    for(size_t i=0; i<std::min<size_t>(10, _proj_nodes.size()); ++i)
-    {
-        std::cout << "   proj[" << i << "] = "
-                  << _proj_nodes[i] << "\n";
-    }
+    std::cout << "   Projected nodes kept = "
+              << proj_nodes.size() << "\n";
 
-    // exportar para ver en ParaView
-    export_points_vtk(_proj_nodes, "proj_nodes.vtk");
+    // 3. Exportar para debug
+    export_points_vtk(proj_nodes, "proj_nodes.vtk");
     export_points_vtk(cone_pts,   "cone_contour.vtk");
+
 
     std::cout << "\n========================================\n";
     std::cout << "   CONE EXAMPLE FINISHED\n";
     std::cout << "========================================\n";    
-    
+
+
+    TransitionPatch2D patch =
+        build_transition_patch_from_band(
+            band_mesh,
+            cone_contour
+        );
+
+    // ------------------------------------------------------------
+    // 8. Debug: print proj_from_ring_gid mapping
+    // ------------------------------------------------------------
+    std::cout << "\n[8] Debug: Projected mapping (proj_from_ring_gid)\n";
+    std::cout << "----------------------------------------\n";
+
+    std::cout << "   ring_polyline size = "
+              << patch.ring_polyline.get_points().size() << "\n";
+
+    std::cout << "   proj_polyline size = "
+              << patch.proj_polyline.get_points().size() << "\n";
+
+    std::cout << "   proj_from_ring_gid size = "
+              << patch.proj_from_ring_gid.size() << "\n\n";
+
+    // Print first N correspondences
+    size_t Nprint = std::min<size_t>(20, patch.proj_from_ring_gid.size());
+
+    for(size_t i = 0; i < Nprint; ++i)
+    {
+        int gid = patch.proj_from_ring_gid[i];
+
+        Vec2 ring_p = patch.ring_polyline.get_points()[i];
+        Vec2 proj_q = patch.proj_polyline.get_points()[i];
+
+        std::cout << "   proj[" << i << "] = " << proj_q
+                  << "  comes from ring_gid = " << gid
+                  << "  ring_point = " << ring_p
+                  << "\n";
+    }
+
+    std::cout << "----------------------------------------\n";
+
     return 0;
 }

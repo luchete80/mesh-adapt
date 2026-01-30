@@ -87,7 +87,6 @@ Mesh2D filter_nodes_inside_contour(
 
     return new_mesh;
 }
-
 Mesh2D remove_nodes_near_contour(
     const Mesh2D& mesh,
     const Contour2D& contour,
@@ -97,19 +96,57 @@ Mesh2D remove_nodes_near_contour(
     Mesh2D new_mesh;
     std::vector<int> old_to_new(mesh.num_nodes(), -1);
 
-    for(size_t i=0; i<mesh.num_nodes(); ++i)
+    // ------------------------------------------------------------
+    // 1. Copy nodes that are far enough from the contour
+    // ------------------------------------------------------------
+    for(size_t i = 0; i < mesh.num_nodes(); ++i)
     {
         Vec2 p = mesh.node(i);
 
-        if(contour.distance(p) > SL) {
+        if(contour.distance(p) > SL * 0.85)
+        {
             int new_id = new_mesh.add_node(p.x, p.y);
             old_to_new[i] = new_id;
         }
     }
 
-    // reconstruir quads válidos igual que antes
+    // ------------------------------------------------------------
+    // 2. Rebuild quads: keep only fully valid elements
+    // ------------------------------------------------------------
+    int kept = 0;
+    int removed = 0;
+
+    for(const auto& quad : mesh.get_quads())
+    {
+        int a_old = quad[0];
+        int b_old = quad[1];
+        int c_old = quad[2];
+        int d_old = quad[3];
+
+        int a = old_to_new[a_old];
+        int b = old_to_new[b_old];
+        int c = old_to_new[c_old];
+        int d = old_to_new[d_old];
+
+        // Only keep quads whose 4 nodes survived
+        if(a != -1 && b != -1 && c != -1 && d != -1)
+        {
+            new_mesh.add_quad(a, b, c, d);
+            kept++;
+        }
+        else
+        {
+            removed++;
+        }
+    }
+
+    std::cout << "[remove_nodes_near_contour]\n";
+    std::cout << "   quads kept    = " << kept << "\n";
+    std::cout << "   quads removed = " << removed << "\n";
+
     return new_mesh;
 }
+
 
 
 }

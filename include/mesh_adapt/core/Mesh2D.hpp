@@ -55,6 +55,7 @@ public:
     }
         
     std::vector<int> find_boundary_nodes() const;
+    std::vector<int> find_ordered_boundary_nodes() const;
     
     Vec2 node(int i) const {
         return nodes[i].x;
