@@ -260,7 +260,7 @@ int main() {
 
     patch.triangles = dt.get_triangles();
 
-    export_triangles_to_vtk(patch.points, patch.triangles,
+    export_triangles_to_vtk(dt.get_points(), patch.triangles,
                             "patch_tris.vtk");
                             
     return 0;
