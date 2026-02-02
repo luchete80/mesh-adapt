@@ -7,23 +7,24 @@
 #include <algorithm>
 #include "mesh_adapt/core/Mesh2D.hpp"
 #include "mesh_adapt/geometry/Polyline2D.hpp"
+#include "mesh_adapt/geometry/Edge.hpp"
 
 namespace mesh_adapt {
 
 // =========================
 // Edge representado como par ordenado (menor_idx, mayor_idx)
 // =========================
-using Edge = std::pair<size_t, size_t>;
-inline Edge make_edge(size_t i, size_t j) {
-    return { std::min(i,j), std::max(i,j) };
-}
+// using Edge = std::pair<size_t, size_t>;
+// inline Edge make_edge(size_t i, size_t j) {
+    // return { std::min(i,j), std::max(i,j) };
+// }
 
 // =========================
 // Hash para Edge (para usar en unordered_map)
 // =========================
 struct EdgeHash {
     std::size_t operator()(const Edge& e) const noexcept {
-        return std::hash<size_t>{}(e.first) ^ (std::hash<size_t>{}(e.second) << 1);
+        return std::hash<size_t>{}(e.a) ^ (std::hash<size_t>{}(e.b) << 1);
     }
 };
 
@@ -36,10 +37,10 @@ inline std::vector<size_t> extract_boundary_nodes(const Mesh2D& mesh) {
 
     // Contar cuántas veces aparece cada edge
     for(const auto& q : quads) {
-        edge_count[make_edge(q[0], q[1])]++;
-        edge_count[make_edge(q[1], q[2])]++;
-        edge_count[make_edge(q[2], q[3])]++;
-        edge_count[make_edge(q[3], q[0])]++;
+        edge_count[Edge(q[0], q[1])]++;
+        edge_count[Edge(q[1], q[2])]++;
+        edge_count[Edge(q[2], q[3])]++;
+        edge_count[Edge(q[3], q[0])]++;
     }
 
     // Extraer edges que solo aparecen una vez (frontera)
@@ -50,8 +51,8 @@ inline std::vector<size_t> extract_boundary_nodes(const Mesh2D& mesh) {
     // Conjunto de nodos frontera
     std::unordered_set<size_t> boundary_set;
     for(auto &e : boundary_edges) {
-        boundary_set.insert(e.first);
-        boundary_set.insert(e.second);
+        boundary_set.insert(e.a);
+        boundary_set.insert(e.b);
     }
 
     // ---------------- Ordenar nodos ----------------
@@ -71,8 +72,8 @@ inline std::vector<size_t> extract_boundary_nodes(const Mesh2D& mesh) {
         // Buscar vecino conectado no usado
         for(auto &e : boundary_edges) {
             size_t candidate = SIZE_MAX;
-            if(e.first == current) candidate = e.second;
-            else if(e.second == current) candidate = e.first;
+            if(e.a == current) candidate = e.b;
+            else if(e.b == current) candidate = e.a;
             else continue;
 
             if(used_nodes.count(candidate)) continue;

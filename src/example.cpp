@@ -212,7 +212,10 @@ int main() {
             cone_contour,
             SL
         );
-
+    
+    Polyline2D ring_polyline = make_polyline(patch,patch.ring_loop); 
+    Polyline2D proj_polyline = make_polyline(patch,patch.proj_loop); 
+    
     // ------------------------------------------------------------
     // 8. Debug: print proj_from_ring_gid mapping
     // ------------------------------------------------------------
@@ -220,23 +223,23 @@ int main() {
     std::cout << "----------------------------------------\n";
 
     std::cout << "   ring_polyline size = "
-              << patch.ring_polyline.get_points().size() << "\n";
+              << ring_polyline.get_points().size() << "\n";
 
     std::cout << "   proj_polyline size = "
-              << patch.proj_polyline.get_points().size() << "\n";
+              << proj_polyline.get_points().size() << "\n";
 
-    std::cout << "   proj_from_ring_gid size = "
-              << patch.proj_from_ring_gid.size() << "\n\n";
+    // std::cout << "   proj_from_ring_gid size = "
+              // << patch.proj_from_ring_gid.size() << "\n\n";
 
-    // Print first N correspondences
+    // // Print first N correspondences
     size_t Nprint = std::min<size_t>(20, patch.proj_from_ring_gid.size());
 
     for(size_t i = 0; i < Nprint; ++i)
     {
         int gid = patch.proj_from_ring_gid[i];
 
-        Vec2 ring_p = patch.ring_polyline.get_points()[i];
-        Vec2 proj_q = patch.proj_polyline.get_points()[i];
+        Vec2 ring_p = ring_polyline.get_points()[i];
+        Vec2 proj_q = proj_polyline.get_points()[i];
 
         std::cout << "   proj[" << i << "] = " << proj_q
                   << "  comes from ring_gid = " << gid
@@ -245,16 +248,16 @@ int main() {
     }
 
 
-      export_polyline_to_vtk(cone_contour, "cone_polyline.vtk");
+      export_polyline_to_vtk(cone_contour, "poly_contour.vtk");
 
-      export_polyline_to_vtk(patch.ring_polyline, "ring.vtk");
+      export_polyline_to_vtk(ring_polyline, "poly_ring.vtk");
 
-      export_polyline_to_vtk(patch.proj_polyline, "proj.vtk");
+      export_polyline_to_vtk(proj_polyline, "poly_proj.vtk");
 
     std::cout << "----------------------------------------\n";
 
     Delaunay2D dt;
-    dt.build_from_two_polylines(patch.proj_polyline,patch.ring_polyline); //outer, inner
+    dt.build_from_two_polylines(proj_polyline,ring_polyline); //outer, inner
 
     dt.triangulate();
 
@@ -262,6 +265,9 @@ int main() {
 
     export_triangles_to_vtk(dt.get_points(), patch.triangles,
                             "patch_tris.vtk");
+                            
+                            
+    debug_print_patch_nodes(patch);
                             
     return 0;
 }
