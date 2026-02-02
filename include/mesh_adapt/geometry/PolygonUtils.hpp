@@ -26,5 +26,23 @@ inline bool point_in_polygon(const Vec2& p,
     return inside;
 }
 
+inline bool triangle_in_transition_region(
+    const std::array<int,3>& tri,
+    const std::vector<Vec2>& pts,
+    const Polyline2D& outer,
+    const Polyline2D& inner
+)
+{
+    Vec2 c = (pts[tri[0]] + pts[tri[1]] + pts[tri[2]]) * (1.0 / 3.0);
+
+    if(!point_in_polygon(c, outer.get_points()))
+        return false;
+
+    if(point_in_polygon(c, inner.get_points()))
+        return false;
+
+    return true;
+}
+
 
 }
