@@ -51,6 +51,7 @@ Polyline2D make_polyline(
 }
 
 
+
 // TransitionPatch2D build_transition_patch_from_band(
     // const Mesh2D& band_mesh,
     // const Polyline2D& contour,
@@ -116,85 +117,97 @@ Polyline2D make_polyline(
 // }
 
 
-TransitionPatch2D build_transition_patch_from_band(
-    const Mesh2D& band_mesh,
-    Polyline2D& contour,   // ⚠️ no const: build_arc_length()
-    double SL
-)
-{
-    TransitionPatch2D patch;
+// TransitionPatch2D build_transition_patch_from_band(
+    // const Mesh2D& band_mesh,
+    // Polyline2D& contour,   // ⚠️ no const: build_arc_length()
+    // double SL
+// )
+// {
+    // TransitionPatch2D patch;
 
-    const double rmin = 0.25 * SL;
+    // const double rmin = 0.25 * SL;
 
-    // =========================================================
-    // Precompute arc-length on contour (UNA sola vez)
-    // =========================================================
-    contour.build_arc_length();
-    const double L = contour.total_length();
+    // // =========================================================
+    // // Precompute arc-length on contour (UNA sola vez)
+    // // =========================================================
+    // contour.build_arc_length();
+    // const double L = contour.total_length();
 
-    // =========================================================
-    // 1. Ring nodes
-    // =========================================================
-    std::vector<int> ring_gids = band_mesh.find_ordered_boundary_nodes();
-    const int N = ring_gids.size();
+    // // =========================================================
+    // // 1. Ring nodes
+    // // =========================================================
+    // std::vector<int> ring_gids = band_mesh.find_ordered_boundary_nodes();
+    // const int N = ring_gids.size();
 
-    std::vector<double> s_ring(N);
+    // std::vector<double> s_ring(N);
 
-    for(int i = 0; i < N; ++i)
-    {
-        int gid = ring_gids[i];
-        Vec2 p = band_mesh.node(gid);
+    // for(int i = 0; i < N; ++i)
+    // {
+        // int gid = ring_gids[i];
+        // Vec2 p = band_mesh.node(gid);
 
-        auto proj = contour.project_with_segment(p);
-        double s  = contour.arc_length_at_segment(proj.seg_id, proj.q);
+        // auto proj = contour.project_with_segment(p);
+        // double s  = contour.arc_length_at_segment(proj.seg_id, proj.q);
 
-        s_ring[i] = s;
+        // s_ring[i] = s;
 
-        int lid = patch.points.size();
-        patch.points.push_back(p);
-        patch.local_to_global.push_back(gid);
-        patch.flags.push_back(NodeFlag::NODE_RING);
-        patch.ring_loop.push_back(lid);
-        patch.proj_lid_to_index.push_back(-1);  // 👈 SIEMPRE
-    }
+        // int lid = patch.points.size();
+        // patch.points.push_back(p);
+        // patch.local_to_global.push_back(gid);
+        // patch.flags.push_back(NodeFlag::NODE_RING);
+        // patch.ring_loop.push_back(lid);
+        // patch.proj_lid_to_index.push_back(-1);  // 👈 SIEMPRE
+    // }
 
-    // =========================================================
-    // 2. Candidatos sobre el contour
-    // =========================================================
-    struct CP {
-        Vec2 p;
-        double s;
-        NodeFlag flag;
-        int from_ring_gid;   // solo válido si flag == NODE_PROJECTED
-    };
+    // // =========================================================
+    // // 2. Candidatos sobre el contour
+    // // =========================================================
+    // struct CP {
+        // Vec2 p;
+        // double s;
+        // NodeFlag flag;
+        // int from_ring_gid;   // solo válido si flag == NODE_PROJECTED
+    // };
 
-    std::vector<CP> cps;
+    // std::vector<CP> cps;
 
-    // ---- 2.a Proyectados desde el ring
-    for(int gid : ring_gids)
-    {
-        Vec2 p = band_mesh.node(gid);
+    // // ---- 2.a Proyectados desde el ring
+    // for(int gid : ring_gids)
+    // {
+        // Vec2 p = band_mesh.node(gid);
 
-        auto proj = contour.project_with_segment(p);
-        double s  = contour.arc_length_at_segment(proj.seg_id, proj.q);
+        // auto proj = contour.project_with_segment(p);
+        // double s  = contour.arc_length_at_segment(proj.seg_id, proj.q);
 
-        cps.push_back({
-            proj.q,
-            s,
-            NodeFlag::NODE_PROJECTED,
-            gid
-        });
-    }
+        // cps.push_back({
+            // proj.q,
+            // s,
+            // NodeFlag::NODE_PROJECTED,
+            // gid
+        // });
+    // }
 
-    // ---- 2.b Constrained: PUNTOS DEL CONTOUR (NO SE PROYECTAN)
-    std::vector<int> critical_contour_ids = {
-        0,
-        (int)contour.pts.size()//-2
-    };
+    // // ---- 2.b Constrained: PUNTOS DEL CONTOUR (NO SE PROYECTAN)
+    // std::vector<int> critical_contour_ids = {
+        // 0,
+        // (int)contour.pts.size()//-2
+    // };
 
-    // for(int cid : critical_contour_ids)
+    // // for(int cid : critical_contour_ids)
+    // // {   
+  // // std::cout <<"Position "<<contour.pts[cid].x<<", "<<contour.pts[cid].y<<std::endl;
+        // // cps.push_back({
+            // // contour.pts[cid],
+            // // contour.prefix[cid],   // 👈 exacto, sin proyección
+            // // NodeFlag::NODE_CRITICAL,
+            // // -1
+        // // });
+    // // }
+
+    // std::cout << "contour points size "<<contour.pts.size()<<std::endl;
+    // for(int cid=0;cid <contour.pts.size();cid++)
     // {   
-  // std::cout <<"Position "<<contour.pts[cid].x<<", "<<contour.pts[cid].y<<std::endl;
+      // std::cout <<"Position "<<contour.pts[cid].x<<", "<<contour.pts[cid].y<<std::endl;
         // cps.push_back({
             // contour.pts[cid],
             // contour.prefix[cid],   // 👈 exacto, sin proyección
@@ -203,116 +216,312 @@ TransitionPatch2D build_transition_patch_from_band(
         // });
     // }
 
-    std::cout << "contour points size "<<contour.pts.size()<<std::endl;
-    for(int cid=0;cid <contour.pts.size();cid++)
-    {   
-      std::cout <<"Position "<<contour.pts[cid].x<<", "<<contour.pts[cid].y<<std::endl;
-        cps.push_back({
-            contour.pts[cid],
-            contour.prefix[cid],   // 👈 exacto, sin proyección
-            NodeFlag::NODE_CRITICAL,
-            -1
-        });
-    }
+    // // =========================================================
+    // // 3. Constrained pisan proyectados cercanos
+    // // =========================================================
+    // std::vector<bool> removed(cps.size(), false);
 
-    // =========================================================
-    // 3. Constrained pisan proyectados cercanos
-    // =========================================================
-    std::vector<bool> removed(cps.size(), false);
+    // // for(size_t i = 0; i < cps.size(); ++i)
+    // // {
+        // // if(cps[i].flag != NodeFlag::NODE_CRITICAL)
+            // // continue;
 
+        // // for(size_t j = 0; j < cps.size(); ++j)
+        // // {
+            // // if(cps[j].flag != NodeFlag::NODE_PROJECTED)
+                // // continue;
+
+            // // if((cps[i].p - cps[j].p).norm() < rmin)
+                // // removed[j] = true;
+        // // }
+    // // }
+
+    // std::vector<CP> filtered;
     // for(size_t i = 0; i < cps.size(); ++i)
+        // if(!removed[i])
+            // filtered.push_back(cps[i]);
+
+
+    // std::cout << "\n[Debug] Candidatos filtrados:\n";
+    // for(size_t k = 0; k < filtered.size(); ++k)
     // {
-        // if(cps[i].flag != NodeFlag::NODE_CRITICAL)
-            // continue;
+        // std::cout << "  k=" << k
+                  // << " s=" << filtered[k].s
+                  // << " flag=" << (filtered[k].flag == NodeFlag::NODE_CRITICAL ? "CRIT" : "PROJ")
+                  // << "\n";
+    // }
 
-        // for(size_t j = 0; j < cps.size(); ++j)
+    // // =========================================================
+    // // 4. Inserción POR TRAMO usando s (CON CONSUMO)
+    // // =========================================================
+    // std::vector<bool> used(filtered.size(), false);
+
+    // std::cout << "\n[Patch Debug] Inserción por tramos\n";
+    // std::cout << "----------------------------------------\n";
+
+    // for(int i = 0; i < N; ++i)
+    // {
+        // double s0 = s_ring[i];
+        // double s1 = s_ring[(i + 1) % N];
+
+        // bool wrap = false;
+        // if(s1 < s0)
         // {
-            // if(cps[j].flag != NodeFlag::NODE_PROJECTED)
-                // continue;
+            // s1 += L;
+            // wrap = true;
+        // }
 
-            // if((cps[i].p - cps[j].p).norm() < rmin)
-                // removed[j] = true;
+        // std::cout << "Tramo ring " << i
+                  // << "  s0=" << s0
+                  // << "  s1=" << s1
+                  // << (wrap ? " (wrap)" : "")
+                  // << "\n";
+
+        // for(size_t k = 0; k < filtered.size(); ++k)
+        // {
+            // if(used[k]) continue;
+
+            // double s = filtered[k].s;
+            // if(wrap && s < s0)
+                // s += L;
+
+            // if(s >= s0 && s <= s1)
+            // {
+                // int lid = patch.points.size();
+
+                // patch.points.push_back(filtered[k].p);
+                // patch.local_to_global.push_back(-1);
+                // patch.flags.push_back(filtered[k].flag);
+                // patch.proj_loop.push_back(lid);
+                              
+              // // default para todos
+              // patch.proj_lid_to_index.push_back(-1);
+
+              // if(filtered[k].flag == NodeFlag::NODE_PROJECTED)
+              // {
+                  // int pid = patch.proj_from_ring_gid.size();
+                  // patch.proj_from_ring_gid.push_back(filtered[k].from_ring_gid);
+
+                  // patch.proj_lid_to_index[lid] = pid;  // 🔒 CONTRATO CERRADO
+              // }
+
+                // used[k] = true;
+
+                // std::cout << "   + insert s=" << filtered[k].s
+                          // << "  flag=" << (filtered[k].flag == NodeFlag::NODE_PROJECTED ? "PROJ" : "CRIT")
+                          // << "\n";
+            // }
         // }
     // }
 
-    std::vector<CP> filtered;
-    for(size_t i = 0; i < cps.size(); ++i)
-        if(!removed[i])
-            filtered.push_back(cps[i]);
+    // return patch;
+// }
 
 
-    std::cout << "\n[Debug] Candidatos filtrados:\n";
-    for(size_t k = 0; k < filtered.size(); ++k)
-    {
-        std::cout << "  k=" << k
-                  << " s=" << filtered[k].s
-                  << " flag=" << (filtered[k].flag == NodeFlag::NODE_CRITICAL ? "CRIT" : "PROJ")
-                  << "\n";
+// ======================================================
+// Struct para datos de proyección (SINGLE DEFINITION)
+// ======================================================
+struct ProjData {
+    Vec2 point;
+    Vec2 tangent;
+    int ring_gid;
+    double distance;
+    int contour_segment_id;
+};
+
+// ======================================================
+// Función principal CORREGIDA
+// ======================================================
+TransitionPatch2D build_transition_patch_from_band(
+    const Mesh2D& band_mesh,
+    Polyline2D& contour,
+    double SL
+) {
+    TransitionPatch2D patch;
+    const double rmin = 0.25 * SL;
+    const double angle_threshold = 45.0;
+    
+    // ======================================================
+    // 1. Puntos del ring (mantiene el orden)
+    // ======================================================
+    auto ring_gids = band_mesh.find_ordered_boundary_nodes();
+    for(int gid : ring_gids) {
+        Vec2 p = band_mesh.node(gid);
+        int lid = patch.points.size();
+        
+        patch.points.push_back(p);
+        patch.local_to_global.push_back(gid);
+        patch.flags.push_back(NodeFlag::NODE_RING);
+        patch.ring_loop.push_back(lid);
+        patch.proj_lid_to_index.push_back(-1);
     }
-
-    // =========================================================
-    // 4. Inserción POR TRAMO usando s (CON CONSUMO)
-    // =========================================================
-    std::vector<bool> used(filtered.size(), false);
-
-    std::cout << "\n[Patch Debug] Inserción por tramos\n";
-    std::cout << "----------------------------------------\n";
-
-    for(int i = 0; i < N; ++i)
-    {
-        double s0 = s_ring[i];
-        double s1 = s_ring[(i + 1) % N];
-
-        bool wrap = false;
-        if(s1 < s0)
-        {
-            s1 += L;
-            wrap = true;
+    
+    // ======================================================
+    // 2. Recolectar proyecciones
+    // ======================================================
+    std::vector<ProjData> all_projections;
+    
+    for(int gid : ring_gids) {
+        Vec2 p = band_mesh.node(gid);
+        auto proj = contour.project_with_segment(p);
+        
+        ProjData data;
+        data.point = proj.q;
+        data.ring_gid = gid;
+        data.distance = (p - proj.q).norm();
+        data.contour_segment_id = proj.seg_id;
+        
+        // Calcular tangente
+        if(proj.seg_id < static_cast<int>(contour.pts.size()) - 1) {
+            data.tangent = (contour.pts[proj.seg_id + 1] - 
+                           contour.pts[proj.seg_id]).normalized();
+        } else {
+            data.tangent = (contour.pts[proj.seg_id] - 
+                           contour.pts[proj.seg_id - 1]).normalized();
         }
-
-        std::cout << "Tramo ring " << i
-                  << "  s0=" << s0
-                  << "  s1=" << s1
-                  << (wrap ? " (wrap)" : "")
-                  << "\n";
-
-        for(size_t k = 0; k < filtered.size(); ++k)
-        {
-            if(used[k]) continue;
-
-            double s = filtered[k].s;
-            if(wrap && s < s0)
-                s += L;
-
-            if(s >= s0 && s <= s1)
-            {
-                int lid = patch.points.size();
-
-                patch.points.push_back(filtered[k].p);
-                patch.local_to_global.push_back(-1);
-                patch.flags.push_back(filtered[k].flag);
-                patch.proj_loop.push_back(lid);
-                              
-              // default para todos
-              patch.proj_lid_to_index.push_back(-1);
-
-              if(filtered[k].flag == NodeFlag::NODE_PROJECTED)
-              {
-                  int pid = patch.proj_from_ring_gid.size();
-                  patch.proj_from_ring_gid.push_back(filtered[k].from_ring_gid);
-
-                  patch.proj_lid_to_index[lid] = pid;  // 🔒 CONTRATO CERRADO
-              }
-
-                used[k] = true;
-
-                std::cout << "   + insert s=" << filtered[k].s
-                          << "  flag=" << (filtered[k].flag == NodeFlag::NODE_PROJECTED ? "PROJ" : "CRIT")
-                          << "\n";
+        
+        all_projections.push_back(data);
+    }
+    
+    // ======================================================
+    // 3. Detectar vértices del contorno
+    // ======================================================
+    struct VertexInfo {
+        Vec2 point;
+        Vec2 tangent_before;
+        Vec2 tangent_after;
+    };
+    
+    std::vector<VertexInfo> contour_vertices;
+    
+    for(size_t i = 1; i < contour.pts.size() - 1; ++i) {
+        Vec2 prev = contour.pts[i-1];
+        Vec2 curr = contour.pts[i];
+        Vec2 next = contour.pts[i+1];
+        
+        Vec2 t_before = (curr - prev).normalized();
+        Vec2 t_after = (next - curr).normalized();
+        
+        double cos_angle = t_before.dot(t_after);
+        cos_angle = std::max(-1.0, std::min(1.0, cos_angle)); // clamp
+        double angle = std::acos(cos_angle) * 180.0 / 3.14159265358979323846;
+        
+        if(angle < 150.0) { // Vértice significativo
+            VertexInfo vi;
+            vi.point = curr;
+            vi.tangent_before = t_before;
+            vi.tangent_after = t_after;
+            contour_vertices.push_back(vi);
+        }
+    }
+    
+    // ======================================================
+    // 4. Filtrado con distancia + dirección
+    // ======================================================
+    std::vector<ProjData> filtered_projections;
+    std::vector<bool> kept(all_projections.size(), true);
+    
+    for(size_t i = 0; i < all_projections.size(); ++i) {
+        if(!kept[i]) continue;
+        
+        for(size_t j = i + 1; j < all_projections.size(); ++j) {
+            if(!kept[j]) continue;
+            
+            const auto& pi = all_projections[i];
+            const auto& pj = all_projections[j];
+            
+            double d = (pi.point - pj.point).norm();
+            if(d < rmin) {
+                // Comparar direcciones
+                double cos_angle = pi.tangent.dot(pj.tangent);
+                cos_angle = std::max(-1.0, std::min(1.0, cos_angle));
+                double angle = std::acos(cos_angle) * 180.0 / 3.14159265358979323846;
+                
+                if(angle < angle_threshold) {
+                    // Misma dirección → quedarse con el más cercano al ring
+                    if(pi.distance < pj.distance) {
+                        kept[j] = false;
+                    } else {
+                        kept[i] = false;
+                        break; // Este punto se descarta
+                    }
+                }
+                // Si angle >= threshold → mantener ambos (direcciones diferentes)
             }
         }
+        
+        if(kept[i]) {
+            filtered_projections.push_back(all_projections[i]);
+        }
     }
-
+    
+    // ======================================================
+    // 5. Añadir vértices críticos si faltan
+    // ======================================================
+    for(const auto& vertex : contour_vertices) {
+        bool has_nearby = false;
+        
+        for(const auto& proj : filtered_projections) {
+            double d = (proj.point - vertex.point).norm();
+            if(d < rmin * 0.5) {
+                has_nearby = true;
+                break;
+            }
+        }
+        
+        if(!has_nearby) {
+            ProjData vertex_proj;
+            vertex_proj.point = vertex.point;
+            vertex_proj.ring_gid = -1; // Es punto crítico
+            vertex_proj.distance = 0;
+            vertex_proj.tangent = (vertex.tangent_before + vertex.tangent_after).normalized();
+            
+            filtered_projections.push_back(vertex_proj);
+        }
+    }
+    
+    // ======================================================
+    // 6. Insertar en el patch CON ORDEN por parámetro S
+    // ======================================================
+    // Necesitamos ordenar los puntos por su posición en el contorno
+    contour.build_arc_length();
+    
+    // Crear vector de (s, índice) para ordenar
+    std::vector<std::pair<double, int>> s_indices;
+    
+    for(size_t i = 0; i < filtered_projections.size(); ++i) {
+        const auto& proj = filtered_projections[i];
+        auto proj_info = contour.project_with_segment(proj.point);
+        double s = contour.arc_length_at_segment(proj_info.seg_id, proj_info.q);
+        s_indices.push_back({s, static_cast<int>(i)});
+    }
+    
+    // Ordenar por s
+    std::sort(s_indices.begin(), s_indices.end(),
+        [](const auto& a, const auto& b) { return a.first < b.first; });
+    
+    // Insertar en orden
+    for(const auto& [s, idx] : s_indices) {
+        const auto& proj = filtered_projections[idx];
+        int lid = patch.points.size();
+        
+        patch.points.push_back(proj.point);
+        patch.local_to_global.push_back(-1);
+        
+        if(proj.ring_gid >= 0) {
+            patch.flags.push_back(NodeFlag::NODE_PROJECTED);
+            
+            int pid = patch.proj_from_ring_gid.size();
+            patch.proj_from_ring_gid.push_back(proj.ring_gid);
+            patch.proj_lid_to_index.push_back(pid);
+        } else {
+            patch.flags.push_back(NodeFlag::NODE_CRITICAL);
+            patch.proj_lid_to_index.push_back(-1);
+        }
+        
+        patch.proj_loop.push_back(lid);
+    }
+    
     return patch;
 }
 

@@ -12,7 +12,7 @@ public:
                 std::map<Edge, EdgeInfo>& edge_map)
         : quads_(quads), edge_map_(edge_map) {}
 
-    void refine_to_conform(int max_iterations = 10) {
+    void refine_to_conform(int max_iterations = 15) {
         for(int it=0; it<max_iterations; ++it){
             std::cout << "\n--- Iteration " << it << " ---\n";
 

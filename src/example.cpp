@@ -288,7 +288,7 @@ int main() {
                             "patch_tris.vtk");
                             
                             
-    //debug_print_patch_nodes(patch);
+    debug_print_patch_nodes(patch);
 
     // Merge a quads
     merge_triangles_to_quads(patch);
