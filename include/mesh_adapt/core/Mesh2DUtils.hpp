@@ -103,7 +103,7 @@ Mesh2D remove_nodes_near_contour(
     {
         Vec2 p = mesh.node(i);
 
-        if(contour.distance(p) > SL * 0.85)
+        if(contour.distance(p) > SL * 0.5)
         {
             int new_id = new_mesh.add_node(p.x, p.y);
             old_to_new[i] = new_id;
