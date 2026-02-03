@@ -217,4 +217,31 @@ inline void export_triangles_to_vtk(
               << " (" << ncells << " tris)\n";
 }
 
+void export_quads_to_vtk(
+    const std::vector<Vec2>& points,
+    const std::vector<std::array<int,4>>& quads,
+    const std::string& filename
+)
+{
+    std::ofstream file(filename);
+    file << "# vtk DataFile Version 3.0\n";
+    file << "quads\n";
+    file << "ASCII\n";
+    file << "DATASET UNSTRUCTURED_GRID\n";
+
+    file << "POINTS " << points.size() << " float\n";
+    for(const auto& p : points)
+        file << p.x << " " << p.y << " 0\n";
+
+    size_t num_cells = quads.size();
+    file << "CELLS " << num_cells << " " << num_cells*5 << "\n";
+    for(const auto& q : quads)
+        file << "4 " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << "\n";
+
+    file << "CELL_TYPES " << num_cells << "\n";
+    for(size_t i = 0; i < num_cells; ++i)
+        file << "9\n"; // VTK_QUAD
+}
+
+
 } // namespace mesh_adapt

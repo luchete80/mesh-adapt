@@ -264,7 +264,6 @@ int main() {
 
     std::vector<std::array<int,3>> filtered;
     
-    int i= 0;
     for(const auto& t : dt.get_triangles())
     {
 
@@ -286,6 +285,15 @@ int main() {
                             "patch_tris.vtk");
                             
                             
+    debug_print_patch_nodes(patch);
+
+    // Merge a quads
+    merge_triangles_to_quads(patch);
+
+    // Export
+    export_triangles_to_vtk(dt.get_points(), patch.tris_left, "patch_tris_left.vtk");
+    export_quads_to_vtk(dt.get_points(), patch.quads, "patch_quads.vtk");
+
     debug_print_patch_nodes(patch);
                             
     return 0;

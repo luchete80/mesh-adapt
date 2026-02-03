@@ -3,6 +3,7 @@
 #include "mesh_adapt/geometry/Polyline2D.hpp"
 #include "mesh_adapt/geometry/Edge.hpp" // to merge quads
 #include <map> 
+#include <set>
 
 namespace mesh_adapt {
   
@@ -20,6 +21,9 @@ struct TransitionPatch2D
     std::vector<std::array<int,3>> triangles;
     std::vector<std::array<int,4>> quads;
 
+
+    std::vector<std::array<int,3>> tris_left;
+    
     // loops (orden topológico)
     std::vector<int> ring_loop;   // local ids
     std::vector<int> proj_loop;   // local ids
@@ -237,73 +241,226 @@ void debug_print_patch_nodes(const TransitionPatch2D& patch, size_t Nmax = 50)
     std::cout << "--------------------------------------------------\n";
 }
 
+struct QuadCandidate {
+    double Q;
+    int t0, t1;
+    std::array<int,4> quad;
+    QuadCandidate(int _t0, int _t1, const std::array<int,4>& _quad, double _Q)
+        : t0(_t0), t1(_t1), quad(_quad), Q(_Q) {}
+};
 
-// void merge_triangles_to_quads(
-    // TransitionPatch2D& patch,
-    // std::vector<std::array<int,3>>& tris_left
-// )
-// {
-    // const auto& tris = patch.triangles;
+// Ángulos de un quad ccw
+std::vector<double> quad_angles(const std::array<int,4>& q, const std::vector<Vec2>& pts)
+{
+    std::vector<double> angles(4);
+    for(int i=0;i<4;i++)
+    {
+        const Vec2& A = pts[q[i]];
+        const Vec2& B = pts[q[(i+1)%4]];
+        const Vec2& C = pts[q[(i+2)%4]];
 
-    // std::map<Edge, std::vector<int>> edge_to_tris;
+        Vec2 u = B - A;
+        Vec2 v = C - B;
 
-    // // ----------------------------------------
-    // // 1. Build edge → triangle map
-    // // ----------------------------------------
-    // for(size_t t = 0; t < tris.size(); ++t)
-    // {
-        // const auto& tri = tris[t];
+        double cos_theta = (u.x*v.x + u.y*v.y) / (u.norm() * v.norm());
+        cos_theta = std::max(-1.0, std::min(1.0, cos_theta)); // clamp
+        angles[(i+1)%4] = std::acos(cos_theta);
+    }
+    return angles;
+}
 
-        // edge_to_tris[Edge(tri[0], tri[1])].push_back(t);
-        // edge_to_tris[Edge(tri[1], tri[2])].push_back(t);
-        // edge_to_tris[Edge(tri[2], tri[0])].push_back(t);
-    // }
+double quad_quality(const std::array<int,4>& q, const std::vector<Vec2>& pts)
+{
+    std::array<double,4> L;
+    for(int i=0;i<4;i++)
+        L[i] = (pts[q[i]] - pts[q[(i+1)%4]]).norm();
 
-    // std::vector<bool> used(tris.size(), false);
+    double Lmax = *std::max_element(L.begin(), L.end());
+    double Lmin = *std::min_element(L.begin(), L.end());
 
-    // // ----------------------------------------
-    // // 2. Merge pairs
-    // // ----------------------------------------
-    // for(const auto& it : edge_to_tris)
-    // {
-        // const auto& tri_ids = it.second;
-        // if(tri_ids.size() != 2) continue;
+    std::vector<double> angles = quad_angles(q, pts);
+    double amin = *std::min_element(angles.begin(), angles.end());
 
-        // int t0 = tri_ids[0];
-        // int t1 = tri_ids[1];
+    double Q = std::pow(Lmax/Lmin, 2) * std::pow(1.0/std::sin(amin), 3);
+    return Q;
+}
 
-        // if(used[t0] || used[t1]) continue;
 
-        // const auto& A = tris[t0];
-        // const auto& B = tris[t1];
+//~ void merge_triangles_to_quads(TransitionPatch2D& patch, double Qmin = 5.0)
+//~ {
+    //~ const auto& tris = patch.triangles;
+    //~ const auto& pts  = patch.points;
 
-        // // collect unique vertices
-        // std::set<int> verts;
-        // verts.insert(A.begin(), A.end());
-        // verts.insert(B.begin(), B.end());
+    //~ std::map<Edge, std::vector<int>> edge_to_tris;
 
-        // if(verts.size() != 4) continue;
+    //~ // 1. Construir edge -> triángulos
+    //~ for(size_t t=0; t<tris.size(); ++t)
+    //~ {
+        //~ const auto& tri = tris[t];
+        //~ edge_to_tris[Edge(tri[0],tri[1])].push_back((int)t);
+        //~ edge_to_tris[Edge(tri[1],tri[2])].push_back((int)t);
+        //~ edge_to_tris[Edge(tri[2],tri[0])].push_back((int)t);
+    //~ }
 
-        // std::array<int,4> quad;
-        // int k = 0;
-        // for(int v : verts) quad[k++] = v;
+    //~ std::vector<QuadCandidate> candidates;
 
-        // patch.quads.push_back(quad);
+    //~ // 2. Generar todos los candidatos
+    //~ for(const auto& it : edge_to_tris)
+    //~ {
+        //~ const auto& tri_ids = it.second;
+        //~ if(tri_ids.size() != 2) continue; // debe ser compartido por 2 triángulos
 
-        // used[t0] = true;
-        // used[t1] = true;
-    // }
+        //~ int t0 = tri_ids[0];
+        //~ int t1 = tri_ids[1];
 
-    // // ----------------------------------------
-    // // 3. Remaining triangles
-    // // ----------------------------------------
-    // tris_left.clear();
-    // for(size_t t = 0; t < tris.size(); ++t)
-    // {
-        // if(!used[t])
-            // tris_left.push_back(tris[t]);
-    // }
-// }
+        //~ // vértices únicos de ambos triángulos
+        //~ std::set<int> verts;
+        //~ verts.insert(tris[t0].begin(), tris[t0].end());
+        //~ verts.insert(tris[t1].begin(), tris[t1].end());
 
+        //~ if(verts.size() != 4) continue; // no forma un quad
+
+        //~ std::array<int,4> quad;
+        //~ int k=0;
+        //~ for(int v : verts) quad[k++] = v;
+
+        //~ double Q = quad_quality(quad, pts); // tu función de calidad
+
+        //~ std::cout << "[DEBUG] Candidate quad (" 
+                  //~ << quad[0] << "," << quad[1] << "," 
+                  //~ << quad[2] << "," << quad[3] 
+                  //~ << ") Q = " << Q << "\n";
+
+        //~ candidates.push_back({Q, t0, t1, quad});
+    //~ }
+
+    //~ std::cout << "[DEBUG] Total candidates: " << candidates.size() << "\n";
+
+    //~ // 3. Ordenar por calidad (menor Q = peor)
+    //~ std::sort(candidates.begin(), candidates.end(),
+        //~ [](const QuadCandidate& a, const QuadCandidate& b){
+            //~ return a.Q < b.Q;
+        //~ });
+
+    //~ std::vector<bool> used_tris(tris.size(), false);
+    //~ patch.quads.clear();
+
+    //~ // 4. Selección greedy
+    //~ int accepted = 0;
+    //~ for(const auto& cand : candidates)
+    //~ {
+        //~ if(used_tris[cand.t0] || used_tris[cand.t1]) continue;
+        //~ if(cand.Q > Qmin) continue; // criterio mínimo
+
+        //~ patch.quads.push_back(cand.quad);
+        //~ used_tris[cand.t0] = true;
+        //~ used_tris[cand.t1] = true;
+        //~ accepted++;
+    //~ }
+
+    //~ std::cout << "[DEBUG] Quads accepted: " << accepted << "\n";
+
+    //~ // 5. Triángulos restantes
+    //~ patch.tris_left.clear();
+    //~ for(size_t t=0; t<tris.size(); ++t)
+        //~ if(!used_tris[t])
+            //~ patch.tris_left.push_back(tris[t]);
+
+    //~ std::cout << "[DEBUG] Triangles left: " << patch.tris_left.size() << "\n";
+//~ }
+
+
+void merge_triangles_to_quads(TransitionPatch2D& patch, double Qmin = 5.0)
+{
+    const auto& tris = patch.triangles;
+    const auto& pts  = patch.points;
+
+    // --- 1. Map edge -> tris
+    std::map<Edge, std::vector<int>> edge_to_tris;
+    for(size_t t=0;t<tris.size();++t)
+    {
+        const auto& tri = tris[t];
+        edge_to_tris[Edge(tri[0], tri[1])].push_back((int)t);
+        edge_to_tris[Edge(tri[1], tri[2])].push_back((int)t);
+        edge_to_tris[Edge(tri[2], tri[0])].push_back((int)t);
+    }
+
+    std::vector<QuadCandidate> candidates;
+
+    // --- 2. Generar todos los candidatos
+    for(const auto& it : edge_to_tris)
+    {
+        const auto& tri_ids = it.second;
+        if(tri_ids.size() != 2) continue;
+
+        int t0 = tri_ids[0];
+        int t1 = tri_ids[1];
+
+        const auto& A = tris[t0];
+        const auto& B = tris[t1];
+
+        // buscar borde compartido
+        int shared_a=-1, shared_b=-1;
+        for(int i=0;i<3;i++)
+        {
+            for(int j=0;j<3;j++)
+            {
+                if((A[i]==B[j] && A[(i+1)%3]==B[(j+1)%3]) ||
+                   (A[i]==B[(j+1)%3] && A[(i+1)%3]==B[j]))
+                {
+                    shared_a = A[i];
+                    shared_b = A[(i+1)%3];
+                    break;
+                }
+            }
+            if(shared_a!=-1) break;
+        }
+        if(shared_a==-1) continue;
+
+        // vértices únicos
+        int uniqueA=-1, uniqueB=-1;
+        for(int v : A) if(v!=shared_a && v!=shared_b) uniqueA = v;
+        for(int v : B) if(v!=shared_a && v!=shared_b) uniqueB = v;
+
+        std::array<int,4> quad = {uniqueA, shared_a, uniqueB, shared_b};
+
+        double Q = quad_quality(quad, pts);
+
+        std::cout << "[DEBUG] Candidate quad (" 
+                  << quad[0]<<","<<quad[1]<<","<<quad[2]<<","<<quad[3] 
+                  << ") Q=" << Q << "\n";
+
+        if(Q <= Qmin)
+            candidates.push_back({t0, t1, quad, Q});
+    }
+
+    std::cout << "[DEBUG] Total candidates passing Qmin=" << Qmin 
+              << ": " << candidates.size() << "\n";
+
+    // --- 3. Ordenar por calidad (mayor Q primero)
+    std::sort(candidates.begin(), candidates.end(),
+        [](const QuadCandidate& a, const QuadCandidate& b){ return a.Q < b.Q; });
+
+    // --- 4. Selección greedy
+    std::vector<bool> used_tris(tris.size(), false);
+    patch.quads.clear();
+
+    for(const auto& cand : candidates)
+    {
+        if(used_tris[cand.t0] || used_tris[cand.t1]) continue;
+        patch.quads.push_back(cand.quad);
+        used_tris[cand.t0] = true;
+        used_tris[cand.t1] = true;
+    }
+
+    // --- 5. Triángulos restantes
+    patch.tris_left.clear();
+    for(size_t t=0;t<tris.size();++t)
+        if(!used_tris[t])
+            patch.tris_left.push_back(tris[t]);
+
+    std::cout << "[DEBUG] Quads accepted: " << patch.quads.size() 
+              << ", triangles left: " << patch.tris_left.size() << "\n";
+}
 
 }
