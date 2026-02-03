@@ -11,7 +11,10 @@
 #include "mesh_adapt/geometry/ContourUtils.hpp"
 #include "mesh_adapt/geometry/PolygonUtils.hpp"
 #include "mesh_adapt/io/VTKWriter2D.hpp"
+
 #include "mesh_adapt/subdivision/MeshToSub.hpp" 
+#include "mesh_adapt/subdivision/QuadRefiner.hpp"
+
 
 using namespace mesh_adapt;
 
@@ -308,6 +311,9 @@ int main() {
     std::map<Edge, EdgeInfo> edge_map = build_edge_map(mesh2sub);
                                 
     debug_edge_map(edge_map);
+    
+    QuadRefiner quad_refiner(mesh2sub.mesh.quads, edge_map);
+    quad_refiner.refine_to_conform();
 
     return 0;
 }

@@ -1,7 +1,10 @@
 #pragma once
 #include <vector>
-#include "EdgeInfo.hpp"
+#include "mesh_adapt/geometry/EdgeInfo.hpp"
 #include <array>
+
+namespace mesh_adapt {
+
 
 enum QuadPattern {
     PAT_NONE,
@@ -11,15 +14,13 @@ enum QuadPattern {
     PAT_THREE,
     PAT_FULL
 };
-
 class QuadClassifier
 {
 public:
     QuadClassifier(
-        const std::vector<std::array<int,4>>& quads,
+        const std::vector<Quad>& quads,
         const std::map<Edge, EdgeInfo>& edge_map
-    ) : quads_(quads), edge_map_(edge_map)
-    {}
+    ) : quads_(quads), edge_map_(edge_map) {}
 
     void classify(std::vector<QuadPattern>& patterns,
                   std::vector<int>& rotations) const
@@ -36,7 +37,7 @@ public:
                 edge_sub[i] = (it != edge_map_.end()) ? it->second.subdivide : false;
             }
 
-            // calcular patrón y rotación
+            // calcular patrón y rotación (igual que antes)
             std::vector<int> refined_edges;
             for(int i=0;i<4;++i)
                 if(edge_sub[i]) refined_edges.push_back(i);
@@ -54,7 +55,7 @@ public:
                     else
                         { pat = PAT_TWO_OPP; rot = refined_edges[0]; }
                     break;
-                case 3: pat = PAT_THREE; rot = 0; break; // puede rotarse según convenga
+                case 3: pat = PAT_THREE; rot = 0; break;
                 case 4: pat = PAT_FULL; rot = 0; break;
             }
 
@@ -64,6 +65,9 @@ public:
     }
 
 private:
-    const std::vector<std::array<int,4>>& quads_;
+    const std::vector<Quad>& quads_;
     const std::map<Edge, EdgeInfo>& edge_map_;
 };
+
+
+}
