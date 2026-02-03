@@ -261,13 +261,31 @@ int main() {
 
     dt.triangulate();
 
-    patch.triangles = dt.get_triangles();
 
-    export_triangles_to_vtk(dt.get_points(), patch.triangles,
+    std::vector<std::array<int,3>> filtered;
+    
+    int i= 0;
+    for(const auto& t : dt.get_triangles())
+    {
+
+        Vec2 c = (dt.get_points()[t[0]] + dt.get_points()[t[1]] + dt.get_points()[t[2]]) / 3.0;
+
+        if( point_in_polygon(c, proj_polyline.pts) &&
+           !point_in_polygon(c, ring_polyline.pts) )
+        {
+            filtered.push_back(t);
+        }
+    }
+
+    patch.triangles = filtered;
+
+    //patch.triangles = dt.get_triangles();
+
+    export_triangles_to_vtk(dt.get_points()/*patch.points*/, patch.triangles,
                             "patch_tris.vtk");
                             
                             
-    debug_print_patch_nodes(patch);
+    //debug_print_patch_nodes(patch);
                             
     return 0;
 }

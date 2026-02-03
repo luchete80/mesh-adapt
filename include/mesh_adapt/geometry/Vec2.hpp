@@ -45,7 +45,11 @@ struct Vec2 {
     }
 
     bool operator!=(const Vec2& o) const { return !(*this == o); }
-    
+
+    Vec2 operator/(double s) const {
+        return {x / s, y / s};
+    }
+        
 };
 
 inline Vec2 operator+(const Vec2& a, const Vec2& b) {

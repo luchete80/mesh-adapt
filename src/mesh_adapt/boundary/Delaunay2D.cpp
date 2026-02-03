@@ -23,6 +23,14 @@ void Delaunay2D::build_from_two_polylines(
     std::vector<int> inner_ids;
 
     //----------------------------------------------------------
+    // Insert INNER loop points
+    //----------------------------------------------------------
+    for(const auto& p : inner_pts){
+        inner_ids.push_back((int)points.size());
+        points.push_back(p);
+    }
+
+    //----------------------------------------------------------
     // Insert OUTER loop points
     //----------------------------------------------------------
     for(const auto& p : outer_pts){
@@ -30,13 +38,6 @@ void Delaunay2D::build_from_two_polylines(
         points.push_back(p);
     }
 
-    //----------------------------------------------------------
-    // Insert INNER loop points
-    //----------------------------------------------------------
-    for(const auto& p : inner_pts){
-        inner_ids.push_back((int)points.size());
-        points.push_back(p);
-    }
 
     //----------------------------------------------------------
     // Insert constraint edges
