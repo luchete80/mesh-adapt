@@ -140,6 +140,8 @@ TransitionPatch2D build_transition_patch_from_band(
         patch.flags.push_back(NodeFlag::NODE_RING);
 
         patch.ring_loop.push_back(lid);
+        patch.proj_lid_to_index.push_back(-1); // no projected
+        
     }
 
     // -----------------------------
@@ -162,14 +164,15 @@ TransitionPatch2D build_transition_patch_from_band(
         if(too_close) continue;
 
         int lid = patch.points.size();
-
+        int pid = patch.proj_from_ring_gid.size();
+        
         patch.points.push_back(q);
         patch.local_to_global.push_back(-1);
         patch.flags.push_back(NodeFlag::NODE_PROJECTED);
 
         patch.proj_loop.push_back(lid);
         patch.proj_from_ring_gid.push_back(ring_gids[i]);
-        patch.proj_lid_to_index.push_back(-1); // no projected
+        patch.proj_lid_to_index.push_back(pid); // 👈 ACÁ SÍ VA EL pid
     }
 
     return patch;
@@ -205,15 +208,27 @@ void debug_print_patch_nodes(const TransitionPatch2D& patch, size_t Nmax = 50)
                   << std::setw(8) << p.y;
 
         // projected → mostrar origen
-        if(patch.flags[lid] == NodeFlag::NODE_PROJECTED)
-        {
-            int pid = patch.proj_lid_to_index[lid];
-            if(pid >= 0)
-            {
-                std::cout << " | from ring_gid = "
-                          << patch.proj_from_ring_gid[pid];
-            }
-        }
+      if(patch.flags[lid] == NodeFlag::NODE_PROJECTED)
+      {
+          if(lid < patch.proj_lid_to_index.size())
+          {
+              int pid = patch.proj_lid_to_index[lid];
+              if(pid >= 0 && pid < (int)patch.proj_from_ring_gid.size())
+              {
+                  std::cout << " | from ring_gid = "
+                            << patch.proj_from_ring_gid[pid];
+              }
+              else
+              {
+                  std::cout << " | from ring_gid = INVALID_PID(" << pid << ")";
+              }
+          }
+          else
+          {
+              std::cout << " | proj_lid_to_index OOB";
+          }
+      }
+
 
 
         std::cout << "\n";

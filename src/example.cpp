@@ -280,12 +280,13 @@ int main() {
     patch.triangles = filtered;
 
     //patch.triangles = dt.get_triangles();
-
+    
+    //dt.get_points is the same that patch_points
     export_triangles_to_vtk(dt.get_points()/*patch.points*/, patch.triangles,
                             "patch_tris.vtk");
                             
                             
-    //debug_print_patch_nodes(patch);
+    debug_print_patch_nodes(patch);
                             
     return 0;
 }

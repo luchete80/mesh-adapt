@@ -21,7 +21,8 @@ void Delaunay2D::build_from_two_polylines(
 
     std::vector<int> outer_ids;
     std::vector<int> inner_ids;
-
+    
+    ///// THIS POINTS ARE INSERTED THE SAME AS PATCH, IN THE SAME ORDER IN FACT SHOULD BE THE PATCH THE ARGUMENTS
     //----------------------------------------------------------
     // Insert INNER loop points
     //----------------------------------------------------------
