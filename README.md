@@ -31,17 +31,4 @@ mesh-adapt/
 Create new Mesh2D inside_mesh = filter_nodes_inside_contour(mesh_bg, cone_contour);
 Mesh2D band_mesh = remove_nodes_near_contour(inside_mesh, cone_contour, SL);
 
-Build a TransitionPatch
-TransitionPatch2D patch =
-    build_transition_patch_from_band(
-        band_mesh,
-        cone_contour,
-        SL
-    );
-    
-✅ Proyección de ring → contorno
-✅ Filtrado por rmin
-✅ Tenés ring_polyline + proj_polyline consistentes
-
-
 Mesh2Sub unify, temporarily, BandMesh & TransitionPatch MERGED quad (not all of them, fallback quads are not included, are used to mark edges to subdivide), 

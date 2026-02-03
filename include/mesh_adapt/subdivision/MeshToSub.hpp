@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include "mesh_adapt/core/Mesh2D.hpp"
 #include "mesh_adapt/boundary/TransitionPatch2D.hpp"
+#include "mesh_adapt/geometry/EdgeInfo.hpp"
 
 #include <stdexcept>
 
@@ -86,6 +87,41 @@ void MeshToSub::add_patch_quads(const TransitionPatch2D& patch) {
     }
 }
 
+
+
+// Builder de edge_map desde MeshToSub
+inline std::map<Edge, EdgeInfo> build_edge_map(const class MeshToSub& mesh_to_sub)
+{
+    std::map<Edge, EdgeInfo> edge_map;
+
+    const auto& quads = mesh_to_sub.mesh.quads;
+    const auto& nodes = mesh_to_sub.mesh.nodes;
+
+    for(size_t qid = 0; qid < quads.size(); ++qid)
+    {
+        const auto& q = quads[qid];
+        for(int i = 0; i < 4; ++i)
+        {
+            int i0 = q[i];
+            int i1 = q[(i+1)%4];
+            Edge e(i0, i1);
+
+            auto it = edge_map.find(e);
+            if(it == edge_map.end())
+            {
+                EdgeInfo info(nodes[i0].x, nodes[i1].x);
+                info.quad_refs.emplace_back(qid, i);
+                edge_map[e] = info;
+            }
+            else
+            {
+                it->second.quad_refs.emplace_back(qid, i);
+            }
+        }
+    }
+
+    return edge_map;
+}
 
 }
 
