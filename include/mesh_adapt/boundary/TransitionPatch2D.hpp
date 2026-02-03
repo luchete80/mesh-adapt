@@ -490,7 +490,7 @@ inline void subdivide_tris_to_quads(
         int gid = patch.points.size();
         patch.points.push_back(G);
         patch.local_to_global.push_back(-1);
-        patch.flags.push_back(NodeFlag::NODE_SUBDIVIDED); // tri subdivided
+        patch.flags.push_back(NodeFlag::NODE_CENTER); // tri subdivided
         int Gid = gid;
 
         // --- 2. Midpoints de aristas ---

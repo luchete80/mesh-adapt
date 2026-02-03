@@ -11,7 +11,7 @@
 #include "mesh_adapt/geometry/ContourUtils.hpp"
 #include "mesh_adapt/geometry/PolygonUtils.hpp"
 #include "mesh_adapt/io/VTKWriter2D.hpp"
-
+#include "mesh_adapt/subdivision/MeshToSub.hpp" 
 
 using namespace mesh_adapt;
 
@@ -299,6 +299,11 @@ int main() {
     subdivide_tris_to_quads(patch);
 
     export_quads_to_vtk(patch.points, patch.quads_fallback, "patch_quads_fallback.vtk");
+    
+    
+    MeshToSub mesh2sub(band_mesh, patch);
+    export_mesh_to_vtk(mesh2sub.mesh,       "mesh2sub.vtk");
+     
                                 
     return 0;
 }

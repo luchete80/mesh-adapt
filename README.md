@@ -42,3 +42,6 @@ TransitionPatch2D patch =
 ✅ Proyección de ring → contorno
 ✅ Filtrado por rmin
 ✅ Tenés ring_polyline + proj_polyline consistentes
+
+
+Mesh2Sub unify, temporarily, BandMesh & TransitionPatch MERGED quad (not all of them, fallback quads are not included, are used to mark edges to subdivide), 

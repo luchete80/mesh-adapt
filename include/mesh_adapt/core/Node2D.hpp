@@ -11,7 +11,8 @@ enum NodeFlag {
     NODE_AXIS = 3,
     NODE_EXTERNAL = 4,
     NODE_SUBDIVIDED = 5,
-    NODE_RING = 6
+    NODE_RING = 6,
+    NODE_CENTER = 7 //In the center of a quad
 };
 
 
