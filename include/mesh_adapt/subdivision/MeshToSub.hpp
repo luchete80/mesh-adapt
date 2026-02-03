@@ -24,6 +24,8 @@ public:
 
     size_t num_nodes() const { return mesh.num_nodes(); }
     size_t num_quads() const { return mesh.num_quads(); }
+    
+    std::set<Edge> subdivided_edges_global; //EDGES WHICH HAVE fallback quads
 
 };
 
@@ -45,6 +47,25 @@ MeshToSub::MeshToSub(const Mesh2D& band_mesh, const TransitionPatch2D& patch) {
 
     // 4) Insertar quads del patch (solo quads "proyectados", sin fallback)
     add_patch_quads(patch);
+
+  // 5) Guardar edges subdivididos en global indices
+  for(const Edge& e_local : patch.subdivided_edges)
+  {
+      int i0 = (patch.flags[e_local.a] == NODE_PROJECTED) ? 
+               local_to_global[e_local.a] : patch.local_to_global[e_local.a];
+      int i1 = (patch.flags[e_local.b] == NODE_PROJECTED) ? 
+               local_to_global[e_local.b] : patch.local_to_global[e_local.b];
+
+      subdivided_edges_global.emplace(Edge(i0, i1));
+  }
+
+  // Log
+  std::cout << "Subdivided edges (global indices):\n";
+  for(const auto& e : subdivided_edges_global) {
+      std::cout << "(" << e.a << ", " << e.b << ")\n";
+  }
+
+
 }
 
 int MeshToSub::add_projected_node(int lid, const TransitionPatch2D& patch) {

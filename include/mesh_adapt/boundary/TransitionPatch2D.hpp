@@ -34,6 +34,8 @@ struct TransitionPatch2D
     // NUEVO: local projected lid -> index en proj_loop
     // size == points.size(), -1 si no es projected
     std::vector<int> proj_lid_to_index;
+
+    std::set<Edge> subdivided_edges; //EDGES WHICH HAVE fallback quads
     
 };
 
@@ -506,6 +508,7 @@ inline void subdivide_tris_to_quads(
             patch.local_to_global.push_back(-1);
             patch.flags.push_back(NodeFlag::NODE_SUBDIVIDED);
             midpoint_cache[e] = lid;
+            patch.subdivided_edges.insert(e); // <-- guardar edge subdividido
             return lid;
         };
 
