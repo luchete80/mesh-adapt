@@ -20,6 +20,7 @@ struct TransitionPatch2D
     // conectividad
     std::vector<std::array<int,3>> triangles;
     std::vector<std::array<int,4>> quads;
+    std::vector<std::array<int,4>> quads_fallback;
 
 
     std::vector<std::array<int,3>> tris_left;
@@ -462,5 +463,68 @@ void merge_triangles_to_quads(TransitionPatch2D& patch, double Qmin = 5.0)
     std::cout << "[DEBUG] Quads accepted: " << patch.quads.size() 
               << ", triangles left: " << patch.tris_left.size() << "\n";
 }
+
+
+
+// subdivide triangles into quads via barycenter + edge midpoints
+inline void subdivide_tris_to_quads(
+    TransitionPatch2D& patch
+)
+{
+    const auto& tris = patch.tris_left;
+    const auto& pts  = patch.points;
+
+    std::map<Edge,int> midpoint_cache; // edge -> local_id del midpoint
+
+    std::vector<std::array<int,4>> new_quads;
+
+    for(const auto& tri : tris)
+    {
+        // tri vertices
+        int A = tri[0];
+        int B = tri[1];
+        int C = tri[2];
+
+        // --- 1. Baricentro ---
+        Vec2 G = (pts[A] + pts[B] + pts[C]) / 3.0;
+        int gid = patch.points.size();
+        patch.points.push_back(G);
+        patch.local_to_global.push_back(-1);
+        patch.flags.push_back(NodeFlag::NODE_SUBDIVIDED); // tri subdivided
+        int Gid = gid;
+
+        // --- 2. Midpoints de aristas ---
+        auto get_midpoint = [&](int i, int j) -> int {
+            Edge e(i,j);
+            auto it = midpoint_cache.find(e);
+            if(it != midpoint_cache.end())
+                return it->second;
+
+            Vec2 pmid = (pts[i] + pts[j]) / 2.0;
+            int lid = patch.points.size();
+            patch.points.push_back(pmid);
+            patch.local_to_global.push_back(-1);
+            patch.flags.push_back(NodeFlag::NODE_SUBDIVIDED);
+            midpoint_cache[e] = lid;
+            return lid;
+        };
+
+        int AB = get_midpoint(A,B);
+        int BC = get_midpoint(B,C);
+        int CA = get_midpoint(C,A);
+
+        // --- 3. Crear 3 quads por tri ---
+        // Quad 1: A, AB, G, CA
+        new_quads.push_back({A, AB, Gid, CA});
+        // Quad 2: B, BC, G, AB
+        new_quads.push_back({B, BC, Gid, AB});
+        // Quad 3: C, CA, G, BC
+        new_quads.push_back({C, CA, Gid, BC});
+    }
+
+    patch.quads_fallback.insert(patch.quads_fallback.end(), new_quads.begin(), new_quads.end());
+    patch.tris_left.clear(); // todos los tri ya subdivididos
+}
+
 
 }

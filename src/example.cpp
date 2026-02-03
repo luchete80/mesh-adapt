@@ -295,6 +295,10 @@ int main() {
     export_quads_to_vtk(dt.get_points(), patch.quads, "patch_quads.vtk");
 
     debug_print_patch_nodes(patch);
-                            
+    
+    subdivide_tris_to_quads(patch);
+
+    export_quads_to_vtk(patch.points, patch.quads_fallback, "patch_quads_fallback.vtk");
+                                
     return 0;
 }
