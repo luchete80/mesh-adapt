@@ -244,4 +244,55 @@ void export_quads_to_vtk(
 }
 
 
+// Export quads from a set of nodes and quads (SubdivisionResult compatible)
+inline void export_nodes_and_quads_to_vtk(
+    const std::vector<Node2D>& nodes,
+    const std::vector<Quad>& quads,
+    const std::string& filename
+)
+{
+    std::ofstream file(filename);
+    if(!file.is_open())
+        throw std::runtime_error("Cannot open file: " + filename);
+
+    file << "# vtk DataFile Version 3.0\n";
+    file << "SubdivisionResult quads\n";
+    file << "ASCII\n";
+    file << "DATASET UNSTRUCTURED_GRID\n";
+
+    // -------------------------
+    // POINTS
+    // -------------------------
+    file << "POINTS " << nodes.size() << " float\n";
+    for(const auto& n : nodes)
+        file << n.x.x << " " << n.x.y << " 0.0\n";
+
+    // -------------------------
+    // CELLS
+    // -------------------------
+    size_t num_cells = quads.size();
+    file << "CELLS " << num_cells << " " << num_cells*5 << "\n"; // 4 nodes + 1 per quad
+    for(const auto& q : quads)
+        file << "4 " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << "\n";
+
+    // -------------------------
+    // CELL TYPES
+    // -------------------------
+    file << "CELL_TYPES " << num_cells << "\n";
+    for(size_t i=0; i<num_cells; ++i)
+        file << "9\n"; // VTK_QUAD
+
+    // -------------------------
+    // POINT DATA (flags opcional)
+    // -------------------------
+    file << "POINT_DATA " << nodes.size() << "\n";
+    file << "SCALARS node_flags int 1\n";
+    file << "LOOKUP_TABLE default\n";
+    for(const auto& n : nodes)
+        file << static_cast<int>(n.flag) << "\n";
+
+    file.close();
+}
+
+
 } // namespace mesh_adapt

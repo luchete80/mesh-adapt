@@ -315,5 +315,13 @@ int main() {
     QuadRefiner quad_refiner(mesh2sub.mesh.quads, edge_map);
     quad_refiner.refine_to_conform();
 
+    SubdivisionResult result = quad_refiner.subdivide_quads_with_nodes(mesh2sub.mesh.get_nodes());
+    
+    export_nodes_and_quads_to_vtk(
+    result.nodes,
+    result.new_quads,
+    "subdivision_results.vtk"
+    );
+
     return 0;
 }

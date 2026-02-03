@@ -25,6 +25,32 @@ struct Node2D {
 
     Node2D() = default;
     Node2D(double X, double Y) : x(X,Y) {}
+
+    // Suma de nodos
+    Node2D operator+(const Node2D& other) const {
+        Node2D result;
+        result.x = x + other.x;
+        result.flag = flag; // opcional, podés decidir qué flag conservar
+        result.boundary = boundary;
+        result.constrained = constrained;
+        return result;
+    }
+
+    // Multiplicación por escalar Node * double
+    Node2D operator*(double s) const {
+        Node2D result;
+        result.x = x * s;
+        result.flag = flag;
+        result.boundary = boundary;
+        result.constrained = constrained;
+        return result;
+    }
+
+    // Multiplicación por escalar double * Node (friend)
+    friend Node2D operator*(double s, const Node2D& n) {
+        return n * s;  // reutiliza Node * double
+    }
+    
 };
 
 }
