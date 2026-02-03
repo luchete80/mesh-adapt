@@ -132,17 +132,43 @@ inline std::map<Edge, EdgeInfo> build_edge_map(const class MeshToSub& mesh_to_su
             {
                 EdgeInfo info(nodes[i0].x, nodes[i1].x);
                 info.quad_refs.emplace_back(qid, i);
+
+                if(mesh_to_sub.subdivided_edges_global.count(e) > 0)
+                    info.subdivide = true;
+                    
                 edge_map[e] = info;
             }
             else
             {
                 it->second.quad_refs.emplace_back(qid, i);
+
+                if(mesh_to_sub.subdivided_edges_global.count(e) > 0)
+                    it->second.subdivide = true;
             }
         }
     }
 
     return edge_map;
 }
+
+inline void debug_edge_map(const std::map<Edge, EdgeInfo>& edge_map)
+{
+    std::cout << "Edge map debug: (quad_id, local_edge_id)\n";
+    for(const auto& [edge, info] : edge_map)
+    {
+        std::cout << "Edge (" << edge.a << ", " << edge.b << ")";
+        if(info.subdivide)
+            std::cout << " [subdivided]";
+        std::cout << " -> quads: ";
+        for(const auto& qr : info.quad_refs)
+        {
+            std::cout << "(" << qr.first << ", " << qr.second << ") ";
+        }
+        std::cout << "\n";
+    }
+    std::cout << "Total edges: " << edge_map.size() << "\n";
+}
+
 
 }
 

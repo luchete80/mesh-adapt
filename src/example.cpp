@@ -304,6 +304,10 @@ int main() {
     MeshToSub mesh2sub(band_mesh, patch);
     export_mesh_to_vtk(mesh2sub.mesh,       "mesh2sub.vtk");
      
+    
+    std::map<Edge, EdgeInfo> edge_map = build_edge_map(mesh2sub);
                                 
+    debug_edge_map(edge_map);
+
     return 0;
 }
