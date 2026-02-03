@@ -288,7 +288,7 @@ int main() {
                             "patch_tris.vtk");
                             
                             
-    debug_print_patch_nodes(patch);
+    //debug_print_patch_nodes(patch);
 
     // Merge a quads
     merge_triangles_to_quads(patch);
@@ -297,7 +297,7 @@ int main() {
     export_triangles_to_vtk(dt.get_points(), patch.tris_left, "patch_tris_left.vtk");
     export_quads_to_vtk(dt.get_points(), patch.quads, "patch_quads.vtk");
 
-    debug_print_patch_nodes(patch);
+    //debug_print_patch_nodes(patch);
     
     subdivide_tris_to_quads(patch);
 

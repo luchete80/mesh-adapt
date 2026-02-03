@@ -51,7 +51,6 @@ Polyline2D make_polyline(
 }
 
 
-
 // TransitionPatch2D build_transition_patch_from_band(
     // const Mesh2D& band_mesh,
     // const Polyline2D& contour,
@@ -60,130 +59,243 @@ Polyline2D make_polyline(
 // {
     // TransitionPatch2D patch;
 
-    // // ------------------------------------------------------------
-    // // 1. Ordered ring boundary nodes
-    // // ------------------------------------------------------------
-    // auto ring_ids = band_mesh.find_ordered_boundary_nodes();
-
-    // std::cout << "[TransitionPatch] Ring nodes = "
-              // << ring_ids.size() << "\n";
-
-    // std::vector<Vec2> ring_pts;
-    // std::vector<Vec2> proj_pts;
-
-    // ring_pts.reserve(ring_ids.size());
-    // proj_pts.reserve(ring_ids.size());
-
-    // patch.proj_from_ring_gid.clear();
-
-    // // minimum spacing filter
+    // auto ring_gids = band_mesh.find_ordered_boundary_nodes();
     // double rmin = 0.5 * SL;
-
-    // // ------------------------------------------------------------
-    // // 2. Project ring nodes onto contour (ordered)
-    // // ------------------------------------------------------------
-    // for(int gid : ring_ids)
+    
+    // patch.proj_lid_to_index.clear();
+    // // -----------------------------
+    // // 1. Ring nodes
+    // // -----------------------------
+    // for(int gid : ring_gids)
     // {
         // Vec2 p = band_mesh.node(gid);
+
+        // int lid = patch.points.size();
+
+        // patch.points.push_back(p);
+        // patch.local_to_global.push_back(gid);
+        // patch.flags.push_back(NodeFlag::NODE_RING);
+
+        // patch.ring_loop.push_back(lid);
+        // patch.proj_lid_to_index.push_back(-1); // no projected
+        
+    // }
+
+    // // -----------------------------
+    // // 2. Projected nodes
+    // // -----------------------------
+    // for(size_t i = 0; i < ring_gids.size(); ++i)
+    // {
+        // Vec2 p = band_mesh.node(ring_gids[i]);
         // Vec2 q = contour.project(p);
 
-        // // ---- filter projected points too close ----
         // bool too_close = false;
-
-        // for(const auto& prev : proj_pts)
+        // for(int lid : patch.proj_loop)
         // {
-            // if((prev - q).norm() < rmin)
+            // if((patch.points[lid] - q).norm() < rmin)
             // {
                 // too_close = true;
                 // break;
             // }
         // }
+        // if(too_close) continue;
 
-        // if(too_close)
-            // continue;
+        // int lid = patch.points.size();
+        // int pid = patch.proj_from_ring_gid.size();
+        
+        // patch.points.push_back(q);
+        // patch.local_to_global.push_back(-1);
+        // patch.flags.push_back(NodeFlag::NODE_PROJECTED);
 
-        // // ---- keep both ring + projected in sync ----
-        // ring_pts.push_back(p);
-        // proj_pts.push_back(q);
-
-        // patch.proj_from_ring_gid.push_back(gid);
+        // patch.proj_loop.push_back(lid);
+        // patch.proj_from_ring_gid.push_back(ring_gids[i]);
+        // patch.proj_lid_to_index.push_back(pid); // 👈 ACÁ SÍ VA EL pid
     // }
-
-    // std::cout << "[TransitionPatch] Projected kept = "
-              // << proj_pts.size() << "\n";
-
-    // // ------------------------------------------------------------
-    // // 3. Store as polylines
-    // // ------------------------------------------------------------
-    // patch.ring_polyline = Polyline2D(ring_pts);
-    // patch.proj_polyline = Polyline2D(proj_pts);
 
     // return patch;
 // }
 
 TransitionPatch2D build_transition_patch_from_band(
     const Mesh2D& band_mesh,
-    const Polyline2D& contour,
+    Polyline2D& contour,   // ⚠️ no const: build_arc_length()
     double SL
 )
 {
     TransitionPatch2D patch;
 
-    auto ring_gids = band_mesh.find_ordered_boundary_nodes();
-    double rmin = 0.5 * SL;
-    
-    patch.proj_lid_to_index.clear();
-    // -----------------------------
+    const double rmin = 0.5 * SL;
+
+    // =========================================================
+    // Precompute arc-length on contour (UNA sola vez)
+    // =========================================================
+    contour.build_arc_length();
+    const double L = contour.total_length();
+
+    // =========================================================
     // 1. Ring nodes
-    // -----------------------------
+    // =========================================================
+    std::vector<int> ring_gids = band_mesh.find_ordered_boundary_nodes();
+    const int N = ring_gids.size();
+
+    std::vector<double> s_ring(N);
+
+    for(int i = 0; i < N; ++i)
+    {
+        int gid = ring_gids[i];
+        Vec2 p = band_mesh.node(gid);
+
+        auto proj = contour.project_with_segment(p);
+        double s  = contour.arc_length_at_segment(proj.seg_id, proj.q);
+
+        s_ring[i] = s;
+
+        int lid = patch.points.size();
+        patch.points.push_back(p);
+        patch.local_to_global.push_back(gid);
+        patch.flags.push_back(NodeFlag::NODE_RING);
+        patch.ring_loop.push_back(lid);
+        patch.proj_lid_to_index.push_back(-1); // 
+    }
+
+    // =========================================================
+    // 2. Candidatos sobre el contour
+    // =========================================================
+    struct CP {
+        Vec2 p;
+        double s;
+        NodeFlag flag;
+        int from_ring_gid;
+    };
+
+    std::vector<CP> cps;
+
+    // ---- 2.a Proyectados desde el ring
     for(int gid : ring_gids)
     {
         Vec2 p = band_mesh.node(gid);
 
-        int lid = patch.points.size();
+        auto proj = contour.project_with_segment(p);
+        double s  = contour.arc_length_at_segment(proj.seg_id, proj.q);
 
-        patch.points.push_back(p);
-        patch.local_to_global.push_back(gid);
-        patch.flags.push_back(NodeFlag::NODE_RING);
-
-        patch.ring_loop.push_back(lid);
-        patch.proj_lid_to_index.push_back(-1); // no projected
-        
+        cps.push_back({
+            proj.q,
+            s,
+            NodeFlag::NODE_PROJECTED,
+            gid
+        });
     }
 
-    // -----------------------------
-    // 2. Projected nodes
-    // -----------------------------
-    for(size_t i = 0; i < ring_gids.size(); ++i)
-    {
-        Vec2 p = band_mesh.node(ring_gids[i]);
-        Vec2 q = contour.project(p);
+    // ---- 2.b Constrained manuales (ejemplo)
+    std::vector<int> critical_contour_ids = {
+        0,
+        (int)contour.pts.size() - 2
+    };
 
-        bool too_close = false;
-        for(int lid : patch.proj_loop)
+    for(int cid : critical_contour_ids)
+    {
+        Vec2 q = contour.pts[cid];
+
+        double s = contour.prefix[cid];  // exacto: nodo de la polyline
+
+        cps.push_back({
+            q,
+            s,
+            NodeFlag::NODE_CRITICAL,
+            -1
+        });
+    }
+
+    // =========================================================
+    // 3. Constrained pisan proyectados cercanos
+    // =========================================================
+    std::vector<bool> removed(cps.size(), false);
+
+    for(size_t i = 0; i < cps.size(); ++i)
+    {
+        if(cps[i].flag != NodeFlag::NODE_CRITICAL)
+            continue;
+
+        for(size_t j = 0; j < cps.size(); ++j)
         {
-            if((patch.points[lid] - q).norm() < rmin)
+            if(cps[j].flag != NodeFlag::NODE_PROJECTED)
+                continue;
+
+            if((cps[i].p - cps[j].p).norm() < rmin)
+                removed[j] = true;
+        }
+    }
+
+    std::vector<CP> filtered;
+    for(size_t i = 0; i < cps.size(); ++i)
+        if(!removed[i])
+            filtered.push_back(cps[i]);
+
+    // =========================================================
+    // 4. Inserción POR TRAMO usando s (CON CONSUMO)
+    // =========================================================
+    std::vector<bool> used(filtered.size(), false);
+
+    std::cout << "\n[Patch Debug] Inserción por tramos\n";
+    std::cout << "----------------------------------------\n";
+
+    for(int i = 0; i < N; ++i)
+    {
+        double s0 = s_ring[i];
+        double s1 = s_ring[(i + 1) % N];
+
+        bool wrap = false;
+        if(s1 < s0)
+        {
+            s1 += L;
+            wrap = true;
+        }
+
+        std::cout << "Tramo ring " << i
+                  << "  s0=" << s0
+                  << "  s1=" << s1
+                  << (wrap ? " (wrap)" : "")
+                  << "\n";
+
+        for(size_t k = 0; k < filtered.size(); ++k)
+        {
+            if(used[k]) continue;
+
+            double s = filtered[k].s;
+            if(wrap && s < s0)
+                s += L;
+
+            if(s >= s0 && s < s1)
             {
-                too_close = true;
-                break;
+                int lid = patch.points.size();
+
+                patch.points.push_back(filtered[k].p);
+                patch.local_to_global.push_back(-1);
+                patch.flags.push_back(filtered[k].flag);
+                patch.proj_loop.push_back(lid);
+
+                // default
+                patch.proj_lid_to_index.push_back(-1);
+
+
+                if(filtered[k].flag == NodeFlag::NODE_PROJECTED)
+                {
+                    int pid = patch.proj_from_ring_gid.size();
+                    patch.proj_from_ring_gid.push_back(filtered[k].from_ring_gid);
+                    patch.proj_lid_to_index[lid] = pid;  // RESTAURA EL CONTRATO
+                } 
+
+                used[k] = true;
+
+                std::cout << "   + insert s=" << filtered[k].s
+                          << "  flag=" << (filtered[k].flag == NodeFlag::NODE_PROJECTED ? "PROJ" : "CRIT")
+                          << "\n";
             }
         }
-        if(too_close) continue;
-
-        int lid = patch.points.size();
-        int pid = patch.proj_from_ring_gid.size();
-        
-        patch.points.push_back(q);
-        patch.local_to_global.push_back(-1);
-        patch.flags.push_back(NodeFlag::NODE_PROJECTED);
-
-        patch.proj_loop.push_back(lid);
-        patch.proj_from_ring_gid.push_back(ring_gids[i]);
-        patch.proj_lid_to_index.push_back(pid); // 👈 ACÁ SÍ VA EL pid
     }
 
     return patch;
 }
+
 
 
 void debug_print_patch_nodes(const TransitionPatch2D& patch, size_t Nmax = 50)
