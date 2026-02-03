@@ -115,6 +115,187 @@ Polyline2D make_polyline(
     // return patch;
 // }
 
+// TransitionPatch2D build_transition_patch_from_band(
+    // const Mesh2D& band_mesh,
+    // Polyline2D& contour,   // ⚠️ no const: build_arc_length()
+    // double SL
+// )
+// {
+    // TransitionPatch2D patch;
+
+    // const double rmin = 0.5 * SL;
+
+    // // =========================================================
+    // // Precompute arc-length on contour (UNA sola vez)
+    // // =========================================================
+    // contour.build_arc_length();
+    // const double L = contour.total_length();
+
+    // // =========================================================
+    // // 1. Ring nodes
+    // // =========================================================
+    // std::vector<int> ring_gids = band_mesh.find_ordered_boundary_nodes();
+    // const int N = ring_gids.size();
+
+    // std::vector<double> s_ring(N);
+
+    // for(int i = 0; i < N; ++i)
+    // {
+        // int gid = ring_gids[i];
+        // Vec2 p = band_mesh.node(gid);
+
+        // auto proj = contour.project_with_segment(p);
+        // double s  = contour.arc_length_at_segment(proj.seg_id, proj.q);
+
+        // s_ring[i] = s;
+
+        // int lid = patch.points.size();
+        // patch.points.push_back(p);
+        // patch.local_to_global.push_back(gid);
+        // patch.flags.push_back(NodeFlag::NODE_RING);
+        // patch.ring_loop.push_back(lid);
+        // patch.proj_lid_to_index.push_back(-1); // 
+    // }
+
+    // // =========================================================
+    // // 2. Candidatos sobre el contour
+    // // =========================================================
+    // struct CP {
+        // Vec2 p;
+        // double s;
+        // NodeFlag flag;
+        // int from_ring_gid;
+    // };
+
+    // std::vector<CP> cps;
+
+    // // ---- 2.a Proyectados desde el ring
+    // for(int gid : ring_gids)
+    // {
+        // Vec2 p = band_mesh.node(gid);
+
+        // auto proj = contour.project_with_segment(p);
+        // double s  = contour.arc_length_at_segment(proj.seg_id, proj.q);
+
+        // cps.push_back({
+            // proj.q,
+            // s,
+            // NodeFlag::NODE_PROJECTED,
+            // gid
+        // });
+    // }
+
+    // // ---- 2.b Constrained manuales (ejemplo)
+    // std::vector<int> critical_contour_ids = {
+        // 0,
+        // (int)contour.pts.size() - 2
+    // };
+
+    // for(int cid : critical_contour_ids)
+    // {
+        // Vec2 q = contour.pts[cid];
+
+        // double s = contour.prefix[cid];  // exacto: nodo de la polyline
+
+        // cps.push_back({
+            // q,
+            // s,
+            // NodeFlag::NODE_CRITICAL,
+            // -1
+        // });
+    // }
+
+    // // =========================================================
+    // // 3. Constrained pisan proyectados cercanos
+    // // =========================================================
+    // std::vector<bool> removed(cps.size(), false);
+
+    // for(size_t i = 0; i < cps.size(); ++i)
+    // {
+        // if(cps[i].flag != NodeFlag::NODE_CRITICAL)
+            // continue;
+
+        // for(size_t j = 0; j < cps.size(); ++j)
+        // {
+            // if(cps[j].flag != NodeFlag::NODE_PROJECTED)
+                // continue;
+
+            // if((cps[i].p - cps[j].p).norm() < rmin)
+                // removed[j] = true;
+        // }
+    // }
+
+    // std::vector<CP> filtered;
+    // for(size_t i = 0; i < cps.size(); ++i)
+        // if(!removed[i])
+            // filtered.push_back(cps[i]);
+
+    // // =========================================================
+    // // 4. Inserción POR TRAMO usando s (CON CONSUMO)
+    // // =========================================================
+    // std::vector<bool> used(filtered.size(), false);
+
+    // std::cout << "\n[Patch Debug] Inserción por tramos\n";
+    // std::cout << "----------------------------------------\n";
+
+    // for(int i = 0; i < N; ++i)
+    // {
+        // double s0 = s_ring[i];
+        // double s1 = s_ring[(i + 1) % N];
+
+        // bool wrap = false;
+        // if(s1 < s0)
+        // {
+            // s1 += L;
+            // wrap = true;
+        // }
+
+        // std::cout << "Tramo ring " << i
+                  // << "  s0=" << s0
+                  // << "  s1=" << s1
+                  // << (wrap ? " (wrap)" : "")
+                  // << "\n";
+
+        // for(size_t k = 0; k < filtered.size(); ++k)
+        // {
+            // if(used[k]) continue;
+
+            // double s = filtered[k].s;
+            // if(wrap && s < s0)
+                // s += L;
+
+            // if(s >= s0 && s < s1)
+            // {
+                // int lid = patch.points.size();
+
+                // patch.points.push_back(filtered[k].p);
+                // patch.local_to_global.push_back(-1);
+                // patch.flags.push_back(filtered[k].flag);
+                // patch.proj_loop.push_back(lid);
+
+                // // default
+                // patch.proj_lid_to_index.push_back(-1);
+
+
+                // if(filtered[k].flag == NodeFlag::NODE_PROJECTED)
+                // {
+                    // int pid = patch.proj_from_ring_gid.size();
+                    // patch.proj_from_ring_gid.push_back(filtered[k].from_ring_gid);
+                    // patch.proj_lid_to_index[lid] = pid;  // RESTAURA EL CONTRATO
+                // } 
+
+                // used[k] = true;
+
+                // std::cout << "   + insert s=" << filtered[k].s
+                          // << "  flag=" << (filtered[k].flag == NodeFlag::NODE_PROJECTED ? "PROJ" : "CRIT")
+                          // << "\n";
+            // }
+        // }
+    // }
+
+    // return patch;
+// }
+
 TransitionPatch2D build_transition_patch_from_band(
     const Mesh2D& band_mesh,
     Polyline2D& contour,   // ⚠️ no const: build_arc_length()
@@ -154,7 +335,7 @@ TransitionPatch2D build_transition_patch_from_band(
         patch.local_to_global.push_back(gid);
         patch.flags.push_back(NodeFlag::NODE_RING);
         patch.ring_loop.push_back(lid);
-        patch.proj_lid_to_index.push_back(-1); // 
+        patch.proj_lid_to_index.push_back(-1);  // 👈 SIEMPRE
     }
 
     // =========================================================
@@ -164,7 +345,7 @@ TransitionPatch2D build_transition_patch_from_band(
         Vec2 p;
         double s;
         NodeFlag flag;
-        int from_ring_gid;
+        int from_ring_gid;   // solo válido si flag == NODE_PROJECTED
     };
 
     std::vector<CP> cps;
@@ -185,7 +366,7 @@ TransitionPatch2D build_transition_patch_from_band(
         });
     }
 
-    // ---- 2.b Constrained manuales (ejemplo)
+    // ---- 2.b Constrained: PUNTOS DEL CONTOUR (NO SE PROYECTAN)
     std::vector<int> critical_contour_ids = {
         0,
         (int)contour.pts.size() - 2
@@ -193,13 +374,9 @@ TransitionPatch2D build_transition_patch_from_band(
 
     for(int cid : critical_contour_ids)
     {
-        Vec2 q = contour.pts[cid];
-
-        double s = contour.prefix[cid];  // exacto: nodo de la polyline
-
         cps.push_back({
-            q,
-            s,
+            contour.pts[cid],
+            contour.prefix[cid],   // 👈 exacto, sin proyección
             NodeFlag::NODE_CRITICAL,
             -1
         });
@@ -272,17 +449,17 @@ TransitionPatch2D build_transition_patch_from_band(
                 patch.local_to_global.push_back(-1);
                 patch.flags.push_back(filtered[k].flag);
                 patch.proj_loop.push_back(lid);
+                              
+              // default para todos
+              patch.proj_lid_to_index.push_back(-1);
 
-                // default
-                patch.proj_lid_to_index.push_back(-1);
+              if(filtered[k].flag == NodeFlag::NODE_PROJECTED)
+              {
+                  int pid = patch.proj_from_ring_gid.size();
+                  patch.proj_from_ring_gid.push_back(filtered[k].from_ring_gid);
 
-
-                if(filtered[k].flag == NodeFlag::NODE_PROJECTED)
-                {
-                    int pid = patch.proj_from_ring_gid.size();
-                    patch.proj_from_ring_gid.push_back(filtered[k].from_ring_gid);
-                    patch.proj_lid_to_index[lid] = pid;  // RESTAURA EL CONTRATO
-                } 
+                  patch.proj_lid_to_index[lid] = pid;  // 🔒 CONTRATO CERRADO
+              }
 
                 used[k] = true;
 
@@ -295,7 +472,6 @@ TransitionPatch2D build_transition_patch_from_band(
 
     return patch;
 }
-
 
 
 void debug_print_patch_nodes(const TransitionPatch2D& patch, size_t Nmax = 50)
