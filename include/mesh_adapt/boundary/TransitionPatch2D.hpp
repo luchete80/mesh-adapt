@@ -201,9 +201,8 @@ TransitionPatch2D build_transition_patch_from_band(
         // ==========================================
         // Usar project_corner_aware (obtiene TODAS las proyecciones)
         // ==========================================
-        //std::vector<ProjectionResult> proj_results = contour.project_corner_aware(p);
-        
-        std::vector<ProjectionResult> proj_results = contour.project_corner_aware_xy(p);
+        std::vector<ProjectionResult> proj_results = contour.project_corner_aware(p);        
+        //std::vector<ProjectionResult> proj_results = contour.project_corner_aware_xy(p);
         
         if(proj_results.empty()) {
             std::cerr << "[WARNING] No se encontraron proyecciones para ring_gid=" << gid << "\n";
