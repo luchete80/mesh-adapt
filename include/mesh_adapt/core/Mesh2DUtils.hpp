@@ -3,6 +3,7 @@
 #include "Mesh2D.hpp"
 #include "mesh_adapt/geometry/Polyline2D.hpp"
 #include "mesh_adapt/geometry/PolygonUtils.hpp"
+#include "mesh_adapt/io/VTKReader2D.hpp"
 
 namespace mesh_adapt {
 
@@ -147,6 +148,59 @@ Mesh2D remove_nodes_near_contour(
     return new_mesh;
 }
 
-
-
+// Convierte los boundary nodes ordenados de una malla a una Polyline2D
+inline Polyline2D extract_boundary_as_polyline(const Mesh2D& mesh) {
+    // Obtener boundary nodes ordenados
+    std::vector<int> boundary_ids = mesh.find_ordered_boundary_nodes();
+    
+    // Extraer los puntos
+    std::vector<Vec2> boundary_points;
+    boundary_points.reserve(boundary_ids.size());
+    
+    for (int id : boundary_ids) {
+        boundary_points.push_back(mesh.node(id));
+    }
+    
+    // Crear polyline (ya está ordenada)
+    Polyline2D polyline(boundary_points);
+    
+    return polyline;
 }
+
+// Versión que extrae y cierra automáticamente la polyline
+inline Polyline2D extract_closed_boundary_as_polyline(const Mesh2D& mesh, 
+                                                      double closure_threshold = 1e-10) {
+    Polyline2D polyline = extract_boundary_as_polyline(mesh);
+    
+    // Verificar si está cerrada
+    if (polyline.pts.size() > 1) {
+        double dist = (polyline.pts.front() - polyline.pts.back()).norm();
+        if (dist > closure_threshold) {
+            // Cerrar la polyline
+            polyline.pts.push_back(polyline.pts.front());
+        }
+    }
+    
+    return polyline;
+}
+
+// Función principal: leer VTK y extraer contorno como Polyline2D
+inline Polyline2D extract_contour_from_vtk(const std::string& filename) {
+    // 1. Leer la malla completa desde VTK
+    Mesh2D mesh = read_mesh_from_vtk(filename);
+    
+    std::cout << "[VTK] Mesh loaded: " << mesh.num_nodes() 
+              << " nodes, " << mesh.num_quads() << " quads\n";
+    
+    // 2. Extraer el boundary como polyline cerrada
+    Polyline2D contour = extract_closed_boundary_as_polyline(mesh);
+    
+    std::cout << "[VTK] Contour extracted: " << contour.pts.size() 
+              << " points\n";
+    
+    return contour;
+}
+
+
+
+}// namespace mesh-adapt

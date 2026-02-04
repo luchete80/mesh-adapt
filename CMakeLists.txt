@@ -37,14 +37,24 @@ endif()
 # -----------------------------
 # Example executable
 # -----------------------------
+add_executable(mesh-adapt
+    src/main.cpp
+)
+
 add_executable(example
     src/example.cpp
 )
+target_include_directories(mesh-adapt PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 target_include_directories(example PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 target_link_libraries(example PRIVATE mesh_adapt)
+
+target_link_libraries(mesh-adapt PRIVATE mesh_adapt)
 
 # -----------------------------
 # Install support (optional)
