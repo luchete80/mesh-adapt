@@ -124,29 +124,116 @@ ProjectionResult project_with_segment(const Vec2& p) const
     //~ return results;
 //~ }
 
+
+
+/////////////// ORIGINAL 
+
+//~ std::vector<ProjectionResult> project_corner_aware(const Vec2& p) const
+//~ {
+    //~ std::vector<ProjectionResult> results;
+    //~ const double corner_thresh = 1e-6;
+    //~ const double dup_thresh = 1e-12;  // Para detectar duplicados
+
+    //~ // 1. Proyecciones sobre segmentos (incluyendo extremos)
+    //~ for(size_t i = 0; i + 1 < pts.size(); ++i)
+    //~ {
+        //~ Vec2 a = pts[i];
+        //~ Vec2 b = pts[i+1];
+        //~ Vec2 ab = b - a;
+
+        //~ double denom = dot(ab, ab);
+        //~ if(denom < 1e-14) continue;
+
+        //~ double t = dot(p - a, ab) / denom;
+        
+        //~ // Solo considerar proyecciones dentro del segmento o muy cerca
+        //~ if (t < -corner_thresh || t > 1.0 + corner_thresh) {
+            //~ continue;
+        //~ }
+        
+        //~ t = std::clamp(t, 0.0, 1.0);
+        //~ Vec2 proj = a + t * ab;
+
+        //~ ProjectionResult pr;
+        //~ pr.q = proj;
+        //~ pr.seg_id = static_cast<int>(i);
+        //~ pr.t = t;
+        //~ results.push_back(pr);
+    //~ }
+
+    //~ // 2. Proyecciones especiales para esquinas (solo si NO hay ya una proyección cercana)
+    //~ for(size_t i = 0; i < pts.size(); ++i)
+    //~ {
+        //~ double d = (p - pts[i]).norm();
+        //~ if(d < corner_thresh)
+        //~ {
+            //~ // Verificar si ya tenemos una proyección suficientemente cercana a este vértice
+            //~ bool already_exists = false;
+            //~ for(const auto& existing : results) {
+                //~ if((existing.q - pts[i]).norm() < dup_thresh) {
+                    //~ already_exists = true;
+                    //~ break;
+                //~ }
+            //~ }
+            
+            //~ if(already_exists) continue;  // Saltar si ya existe
+
+            //~ // Para vértices interiores, añadir ambas posibilidades
+            //~ if (i > 0 && i < pts.size() - 1) {
+                //~ // Segmento anterior
+                //~ ProjectionResult pr_prev;
+                //~ pr_prev.q = pts[i];
+                //~ pr_prev.seg_id = static_cast<int>(i-1);
+                //~ pr_prev.t = 1.0;
+                //~ results.push_back(pr_prev);
+                
+                //~ // Segmento siguiente  
+                //~ ProjectionResult pr_next;
+                //~ pr_next.q = pts[i];
+                //~ pr_next.seg_id = static_cast<int>(i);
+                //~ pr_next.t = 0.0;
+                //~ results.push_back(pr_next);
+            //~ }
+            //~ else if (i == 0 && pts.size() > 1) {
+                //~ ProjectionResult pr;
+                //~ pr.q = pts[i];
+                //~ pr.seg_id = 0;
+                //~ pr.t = 0.0;
+                //~ results.push_back(pr);
+            //~ }
+            //~ else if (i == pts.size() - 1 && pts.size() > 1) {
+                //~ ProjectionResult pr;
+                //~ pr.q = pts[i];
+                //~ pr.seg_id = static_cast<int>(pts.size() - 2);
+                //~ pr.t = 1.0;
+                //~ results.push_back(pr);
+            //~ }
+        //~ }
+    //~ }
+
+    //~ return results;
+//~ }
+
 std::vector<ProjectionResult> project_corner_aware(const Vec2& p) const
 {
     std::vector<ProjectionResult> results;
-    const double corner_thresh = 1e-6;
-    const double dup_thresh = 1e-12;  // Para detectar duplicados
+    const double corner_thresh = 1e-6; // distancia para considerar "sobre el vértice"
+    const double dup_thresh = 1e-12;   // para evitar duplicados exactos
 
-    // 1. Proyecciones sobre segmentos (incluyendo extremos)
+    // 1️⃣ Proyecciones sobre todos los segmentos
     for(size_t i = 0; i + 1 < pts.size(); ++i)
     {
         Vec2 a = pts[i];
         Vec2 b = pts[i+1];
         Vec2 ab = b - a;
-
         double denom = dot(ab, ab);
         if(denom < 1e-14) continue;
 
         double t = dot(p - a, ab) / denom;
-        
-        // Solo considerar proyecciones dentro del segmento o muy cerca
-        if (t < -corner_thresh || t > 1.0 + corner_thresh) {
-            continue;
-        }
-        
+
+        // Solo considerar proyecciones dentro del segmento extendido por corner_thresh
+        if(t < -corner_thresh || t > 1.0 + corner_thresh) continue;
+
         t = std::clamp(t, 0.0, 1.0);
         Vec2 proj = a + t * ab;
 
@@ -157,58 +244,42 @@ std::vector<ProjectionResult> project_corner_aware(const Vec2& p) const
         results.push_back(pr);
     }
 
-    // 2. Proyecciones especiales para esquinas (solo si NO hay ya una proyección cercana)
+    // 2️⃣ Proyecciones sobre vértices (esquinas)
     for(size_t i = 0; i < pts.size(); ++i)
     {
         double d = (p - pts[i]).norm();
-        if(d < corner_thresh)
-        {
-            // Verificar si ya tenemos una proyección suficientemente cercana a este vértice
-            bool already_exists = false;
-            for(const auto& existing : results) {
-                if((existing.q - pts[i]).norm() < dup_thresh) {
-                    already_exists = true;
-                    break;
-                }
-            }
-            
-            if(already_exists) continue;  // Saltar si ya existe
+        if(d > corner_thresh) continue; // no estamos sobre el vértice
 
-            // Para vértices interiores, añadir ambas posibilidades
-            if (i > 0 && i < pts.size() - 1) {
-                // Segmento anterior
-                ProjectionResult pr_prev;
-                pr_prev.q = pts[i];
-                pr_prev.seg_id = static_cast<int>(i-1);
-                pr_prev.t = 1.0;
-                results.push_back(pr_prev);
-                
-                // Segmento siguiente  
-                ProjectionResult pr_next;
-                pr_next.q = pts[i];
-                pr_next.seg_id = static_cast<int>(i);
-                pr_next.t = 0.0;
-                results.push_back(pr_next);
+        // Evitar duplicados
+        bool already_exists = false;
+        for(const auto& existing : results) {
+            if((existing.q - pts[i]).norm() < dup_thresh) {
+                already_exists = true;
+                break;
             }
-            else if (i == 0 && pts.size() > 1) {
-                ProjectionResult pr;
-                pr.q = pts[i];
-                pr.seg_id = 0;
-                pr.t = 0.0;
-                results.push_back(pr);
-            }
-            else if (i == pts.size() - 1 && pts.size() > 1) {
-                ProjectionResult pr;
-                pr.q = pts[i];
-                pr.seg_id = static_cast<int>(pts.size() - 2);
-                pr.t = 1.0;
-                results.push_back(pr);
-            }
+        }
+        if(already_exists) continue;
+
+        // Añadir proyecciones para los segmentos adyacentes
+        if(i > 0) {
+            ProjectionResult pr_prev;
+            pr_prev.q = pts[i];
+            pr_prev.seg_id = static_cast<int>(i-1);
+            pr_prev.t = 1.0; // extremo del segmento anterior
+            results.push_back(pr_prev);
+        }
+        if(i < pts.size() - 1) {
+            ProjectionResult pr_next;
+            pr_next.q = pts[i];
+            pr_next.seg_id = static_cast<int>(i);
+            pr_next.t = 0.0; // inicio del segmento siguiente
+            results.push_back(pr_next);
         }
     }
 
     return results;
 }
+
 
 void build_arc_length()
 {
