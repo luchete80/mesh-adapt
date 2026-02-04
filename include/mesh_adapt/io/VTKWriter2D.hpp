@@ -4,9 +4,8 @@
 #include "mesh_adapt/core/Mesh2D.hpp"
 
 namespace mesh_adapt {
-
-inline void export_mesh_to_vtk(const Mesh2D& mesh,
-                              const std::string& filename)
+  inline void export_mesh_to_vtk(const Mesh2D& mesh,
+                                         const std::string& filename)
 {
     std::ofstream out(filename);
 
@@ -15,7 +14,7 @@ inline void export_mesh_to_vtk(const Mesh2D& mesh,
     }
 
     out << "# vtk DataFile Version 3.0\n";
-    out << "Mesh2D export\n";
+    out << "Mesh2D with Detailed Node Flags\n";
     out << "ASCII\n";
     out << "DATASET UNSTRUCTURED_GRID\n";
 
@@ -29,10 +28,10 @@ inline void export_mesh_to_vtk(const Mesh2D& mesh,
     }
 
     // -------------------------
-    // CELLS (quads)
+    // CELLS
     // -------------------------
     int ncells = mesh.num_quads();
-    int total_size = ncells * 5; // each quad: "4 i j k l"
+    int total_size = ncells * 5;
 
     out << "CELLS " << ncells << " " << total_size << "\n";
 
@@ -44,28 +43,102 @@ inline void export_mesh_to_vtk(const Mesh2D& mesh,
             << q[3] << "\n";
     }
 
-    // -------------------------
-    // CELL TYPES
-    // -------------------------
     out << "CELL_TYPES " << ncells << "\n";
     for(int i=0; i<ncells; ++i) {
-        out << "9\n"; // VTK_QUAD = 9
+        out << "9\n";
     }
 
     // -------------------------
-    // POINT DATA (flags)
+    // POINT DATA - DETALLADO
     // -------------------------
     out << "POINT_DATA " << mesh.num_nodes() << "\n";
-    out << "SCALARS boundary_flag int 1\n";
-    out << "LOOKUP_TABLE default\n";
 
+    // Contadores para estadísticas
+    std::map<NodeFlag, int> flag_counts;
+    int boundary_count = 0;
+    int constrained_count = 0;
+
+    // 1. Flag numérico
+    out << "SCALARS flag_int int 1\n";
+    out << "LOOKUP_TABLE default\n";
+    for(const auto& node : mesh.get_nodes()) {
+        int flag_val = static_cast<int>(node.flag);
+        out << flag_val << "\n";
+        flag_counts[node.flag]++;
+        if(node.boundary) boundary_count++;
+        if(node.constrained) constrained_count++;
+    }
+
+    // 2. Flag categorizado (grupos)
+    out << "SCALARS flag_category int 1\n";
+    out << "LOOKUP_TABLE default\n";
+    for(const auto& node : mesh.get_nodes()) {
+        int category = 0;
+        switch(node.flag) {
+            case NODE_RING:       category = 1; break;    // Grupo 1: Ring
+            case NODE_PROJECTED:  category = 2; break;    // Grupo 2: Projected
+            case NODE_CRITICAL:   category = 3; break;    // Grupo 3: Critical
+            case NODE_SUBDIVIDED: 
+            case NODE_CENTER:     category = 4; break;    // Grupo 4: Subdivision
+            case NODE_AXIS:       category = 5; break;    // Grupo 5: Axis
+            case NODE_EXTERNAL:   category = 6; break;    // Grupo 6: External
+            case NODE_INTERIOR:   category = 7; break;    // Grupo 7: Interior
+            default:              category = 0; break;
+        }
+        out << category << "\n";
+    }
+
+    // 3. Boundary (sí/no)
+    out << "SCALARS is_boundary int 1\n";
+    out << "LOOKUP_TABLE default\n";
     for(const auto& node : mesh.get_nodes()) {
         out << (node.boundary ? 1 : 0) << "\n";
     }
 
-    out.close();
-}
+    // 4. Constrained (sí/no)
+    out << "SCALARS is_constrained int 1\n";
+    out << "LOOKUP_TABLE default\n";
+    for(const auto& node : mesh.get_nodes()) {
+        out << (node.constrained ? 1 : 0) << "\n";
+    }
 
+    // 5. Combinación de flags (bitmask)
+    out << "SCALARS flag_bitmask int 1\n";
+    out << "LOOKUP_TABLE default\n";
+    for(const auto& node : mesh.get_nodes()) {
+        int bitmask = 0;
+        bitmask |= static_cast<int>(node.flag) & 0x07;      // bits 0-2: flag
+        if(node.boundary) bitmask |= 0x08;                  // bit 3: boundary
+        if(node.constrained) bitmask |= 0x10;               // bit 4: constrained
+        out << bitmask << "\n";
+    }
+
+    out.close();
+
+    // Mostrar estadísticas
+    std::cout << "\n[VTK] Mesh exported to " << filename << "\n";
+    std::cout << "  - Nodes: " << mesh.num_nodes() << "\n";
+    std::cout << "  - Quads: " << mesh.num_quads() << "\n";
+    std::cout << "  - Node flag distribution:\n";
+    for(const auto& [flag, count] : flag_counts) {
+        std::string flag_name;
+        switch(flag) {
+            case NODE_PROJECTED:  flag_name = "PROJECTED"; break;
+            case NODE_CRITICAL:   flag_name = "CRITICAL"; break;
+            case NODE_INTERIOR:   flag_name = "INTERIOR"; break;
+            case NODE_AXIS:       flag_name = "AXIS"; break;
+            case NODE_EXTERNAL:   flag_name = "EXTERNAL"; break;
+            case NODE_SUBDIVIDED: flag_name = "SUBDIVIDED"; break;
+            case NODE_RING:       flag_name = "RING"; break;
+            case NODE_CENTER:     flag_name = "CENTER"; break;
+            default:              flag_name = "UNKNOWN"; break;
+        }
+        std::cout << "    * " << flag_name << ": " << count 
+                  << " (" << (100.0 * count / mesh.num_nodes()) << "%)\n";
+    }
+    std::cout << "  - Boundary nodes: " << boundary_count << "\n";
+    std::cout << "  - Constrained nodes: " << constrained_count << "\n";
+}
 
 inline void export_points_vtk(const std::vector<Vec2>& pts,
                               const std::string& filename)

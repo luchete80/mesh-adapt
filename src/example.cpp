@@ -15,6 +15,7 @@
 #include "mesh_adapt/subdivision/MeshToSub.hpp" 
 #include "mesh_adapt/subdivision/QuadRefiner.hpp"
 
+#include "mesh_adapt/smoothing/LaplacianSmoother2D.hpp"
 
 using namespace mesh_adapt;
 
@@ -317,11 +318,38 @@ int main() {
 
     SubdivisionResult result = quad_refiner.subdivide_quads_with_nodes(mesh2sub.mesh.get_nodes());
     
+    Mesh2D resmesh=build_final_mesh(result);
+
+    export_mesh_to_vtk(resmesh,       "resmesh.vtk");
+    
     export_nodes_and_quads_to_vtk(
     result.nodes,
     result.new_quads,
     "subdivision_results.vtk"
     );
 
+
+    std::vector<int> boundary =
+        resmesh.find_ordered_boundary_nodes();
+    
+
+    std::vector<char> fixed(resmesh.nodes.size(), 0);
+    for(int i : boundary)
+        fixed[i] = 1;
+
+    LaplacianSmoother2D smoother(
+        resmesh.nodes,
+        resmesh.quads,
+        fixed
+    );
+
+    smoother.smooth();
+
+   export_nodes_and_quads_to_vtk(
+      smoother.nodes_,
+      smoother.quads_,
+      "laplacian.vtk"
+  ); 
+    
     return 0;
 }

@@ -18,4 +18,21 @@ struct SubdivisionResult {
     int max_node_index;                     // índice máximo de nodos antes de agregar nuevos
 };
 
+Mesh2D build_final_mesh(
+    const SubdivisionResult& result
+)
+{
+    Mesh2D out;
+
+    // agregar nodos nuevos
+    for(const auto& n : result.nodes)
+        out.add_node(n.x.x, n.x.y);
+
+    // agregar quads refinados
+    for(const auto& q : result.new_quads)
+        out.add_quad(q[0], q[1], q[2], q[3]);
+
+    return out;
+}
+
 }
