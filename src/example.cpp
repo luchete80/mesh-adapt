@@ -313,7 +313,8 @@ int main() {
                                 
     debug_edge_map(edge_map);
     
-    QuadRefiner quad_refiner(mesh2sub.mesh.quads, edge_map);
+    QuadRefiner quad_refiner(mesh2sub.mesh.quads, edge_map, mesh2sub.subdivided_edges_global);
+    //QuadRefiner quad_refiner(mesh2sub.mesh.quads, edge_map, mesh2sub.subdivided_edge_to_global);
     quad_refiner.refine_to_conform();
 
     SubdivisionResult result = quad_refiner.subdivide_quads_with_nodes(mesh2sub.mesh.get_nodes());

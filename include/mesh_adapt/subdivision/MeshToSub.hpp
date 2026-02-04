@@ -25,6 +25,8 @@ public:
     size_t num_quads() const { return mesh.num_quads(); }
     
     std::set<Edge> subdivided_edges_global; //EDGES WHICH HAVE fallback quads
+    std::map<Edge,int> subdivided_edge_to_global; // Nuevo: edge del patch → nodo global (midpoint/baricentro)
+
 
     // NUEVO: Verificar consistencia
     void verify_consistency(const TransitionPatch2D& patch);
@@ -77,6 +79,13 @@ MeshToSub::MeshToSub(const Mesh2D& band_mesh, const TransitionPatch2D& patch) {
                       << e_local.a << "," << e_local.b << ") -> ("
                       << i0 << "," << i1 << ")\n";
         }
+    }
+    
+    // Nuevo: map de edge local → nodo global (midpoint/baricentro)
+    for(const auto& [edge, lid] : patch.subdivided_edge_to_node) {
+        int gid = local_to_global[lid];
+        if(gid >= 0)
+            subdivided_edge_to_global[edge] = gid;
     }
 
     // 6) Verificar consistencia
