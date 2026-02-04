@@ -77,46 +77,64 @@ ProjectionResult project_with_segment(const Vec2& p) const
     return res;
 }
 
-ProjectionResult project_xy(const Vec2& p, ProjAxis axis) const {
-    ProjectionResult res;
-    res.q = pts[0];
-    res.seg_id = 0;
-    res.t = 0.0;
+ProjectionResult project_best_xy(const Vec2& p) const {
+    ProjectionResult best;
+    best.q = pts[0];
+    best.seg_id = 0;
+    best.t = 0.0;
 
-    double min_dist = std::numeric_limits<double>::max();
+    double min_score = std::numeric_limits<double>::max();
 
     for(size_t i = 0; i + 1 < pts.size(); ++i) {
         Vec2 a = pts[i];
         Vec2 b = pts[i+1];
+        Vec2 ab = b - a;
         Vec2 proj;
 
-        if(axis == ProjAxis::X) {
-            proj.x = p.x;
-            // limitar dentro del segmento
-            proj.y = std::clamp(p.y, std::min(a.y, b.y), std::max(a.y, b.y));
-        } else { // ProjAxis::Y
+        // Detectar orientación de la arista
+        bool is_horizontal = std::abs(ab.y) < 1e-12;
+        bool is_vertical   = std::abs(ab.x) < 1e-12;
+
+        if(is_horizontal) {
+            // proyectar solo en Y
             proj.y = p.y;
-            proj.x = std::clamp(p.x, std::min(a.x, b.x), std::max(a.x, b.x));
+            proj.y = std::clamp(proj.y, std::min(a.y,b.y), std::max(a.y,b.y));
+            proj.x = a.x; // mantener X constante
+        } else if(is_vertical) {
+            // proyectar solo en X
+            proj.x = p.x;
+            proj.x = std::clamp(proj.x, std::min(a.x,b.x), std::max(a.x,b.x));
+            proj.y = a.y; // mantener Y constante
+        } else {
+            // proyectar ortogonal al segmento
+            double denom = dot(ab, ab);
+            double t = dot(p - a, ab) / denom;
+            t = std::clamp(t, 0.0, 1.0);
+            proj = a + t * ab;
         }
 
-        double d = (p - proj).norm();
-        if(d < min_dist) {
-            min_dist = d;
-            res.q = proj;
-            res.seg_id = static_cast<int>(i);
+        double dist = (p - proj).norm();
+
+        // Opcional: penalizar según ángulo si quieres preferir segmentos más "alineados"
+        double score = dist; // + angle_penalty si quieres
+
+        if(score < min_score) {
+            min_score = score;
+            best.q = proj;
+            best.seg_id = static_cast<int>(i);
+
             // calcular t relativo sobre el segmento original
-            Vec2 ab = b - a;
-            double denom = dot(ab, ab);
+            Vec2 ab_seg = b - a;
+            double denom = dot(ab_seg, ab_seg);
             if(denom > 1e-14)
-                res.t = dot(proj - a, ab) / denom;
+                best.t = dot(proj - a, ab_seg) / denom;
             else
-                res.t = 0.0;
+                best.t = 0.0;
         }
     }
 
-    return res;
+    return best;
 }
-
 
 
 void build_arc_length()

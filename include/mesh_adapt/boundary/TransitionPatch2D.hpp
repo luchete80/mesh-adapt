@@ -166,6 +166,8 @@ TransitionPatch2D build_transition_patch_from_band(
         Vec2 p = band_mesh.node(gid);
         auto proj = contour.project_with_segment(p);
         
+        //auto proj = contour.project_best_xy(p);
+        
         ProjData data;
         data.point = proj.q;
         data.ring_gid = gid;
@@ -182,7 +184,14 @@ TransitionPatch2D build_transition_patch_from_band(
         }
         
         all_projections.push_back(data);
-        
+
+    //~ // <-- PRINT -->
+    std::cout << "[DEBUG] ring_gid=" << gid
+              << " p=(" << p.x << "," << p.y << ")"
+              << " proj=(" << proj.q.x << "," << proj.q.y << ")"
+              << " distance=" << data.distance
+              << " seg_id=" << proj.seg_id << "\n";
+                      
         //~ auto proj_x = contour.project_xy(p, ProjAxis::X);
         //~ auto proj_y = contour.project_xy(p, ProjAxis::Y);
 
@@ -203,6 +212,12 @@ TransitionPatch2D build_transition_patch_from_band(
 
         //~ all_projections.push_back(data_x);
         //~ all_projections.push_back(data_y);
+
+      //~ std::cout << "[DEBUG] ring_gid=" << gid
+                //~ << " p=(" << p.x << "," << p.y << ")"
+                //~ << " proj=(" << proj_x.q.x << "," << proj_x.q.y << ")"
+                //~ << " distance=" << data_x.distance
+                //~ << " seg_id=" << proj_x.seg_id << "\n";
 
     }
     
