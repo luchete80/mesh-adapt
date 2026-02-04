@@ -77,65 +77,138 @@ ProjectionResult project_with_segment(const Vec2& p) const
     return res;
 }
 
-ProjectionResult project_best_xy(const Vec2& p) const {
-    ProjectionResult best;
-    best.q = pts[0];
-    best.seg_id = 0;
-    best.t = 0.0;
+//~ std::vector<ProjectionResult> project_corner_aware(const Vec2& p) const
+//~ {
+    //~ std::vector<ProjectionResult> results;
 
-    double min_score = std::numeric_limits<double>::max();
+    //~ // Recorremos todos los segmentos
+    //~ for(size_t i = 0; i + 1 < pts.size(); ++i)
+    //~ {
+        //~ Vec2 a = pts[i];
+        //~ Vec2 b = pts[i+1];
+        //~ Vec2 ab = b - a;
 
-    for(size_t i = 0; i + 1 < pts.size(); ++i) {
+        //~ double denom = dot(ab, ab);
+        //~ if(denom < 1e-14) continue;
+
+        //~ double t = dot(p - a, ab) / denom;
+        //~ t = std::clamp(t, 0.0, 1.0);
+
+        //~ Vec2 proj = a + t * ab;
+        //~ double d = (p - proj).norm();
+
+        //~ ProjectionResult pr;
+        //~ pr.q = proj;
+        //~ pr.seg_id = static_cast<int>(i);
+        //~ pr.t = t;
+        //~ results.push_back(pr);
+    //~ }
+
+    //~ // Chequeamos proximidad a vértices: si está “cerca de una esquina”, duplicamos la proyección
+    //~ const double corner_thresh = 1e-6; // tolerancia pequeña
+    //~ for(size_t i = 0; i < pts.size(); ++i)
+    //~ {
+        //~ double d = (p - pts[i]).norm();
+        //~ if(d < corner_thresh)
+        //~ {
+            //~ ProjectionResult pr;
+            //~ pr.q = pts[i];
+            //~ pr.seg_id = static_cast<int>(i);
+            //~ pr.t = 0.0;
+            //~ results.push_back(pr);
+        //~ }
+    //~ }
+
+    //~ // Opcional: filtrar para devolver solo la proyección más cercana por segmento/vértice
+    //~ // Se puede ordenar por distancia si querés
+    //~ return results;
+//~ }
+
+std::vector<ProjectionResult> project_corner_aware(const Vec2& p) const
+{
+    std::vector<ProjectionResult> results;
+    const double corner_thresh = 1e-6;
+    const double dup_thresh = 1e-12;  // Para detectar duplicados
+
+    // 1. Proyecciones sobre segmentos (incluyendo extremos)
+    for(size_t i = 0; i + 1 < pts.size(); ++i)
+    {
         Vec2 a = pts[i];
         Vec2 b = pts[i+1];
         Vec2 ab = b - a;
-        Vec2 proj;
 
-        // Detectar orientación de la arista
-        bool is_horizontal = std::abs(ab.y) < 1e-12;
-        bool is_vertical   = std::abs(ab.x) < 1e-12;
+        double denom = dot(ab, ab);
+        if(denom < 1e-14) continue;
 
-        if(is_horizontal) {
-            // proyectar solo en Y
-            proj.y = p.y;
-            proj.y = std::clamp(proj.y, std::min(a.y,b.y), std::max(a.y,b.y));
-            proj.x = a.x; // mantener X constante
-        } else if(is_vertical) {
-            // proyectar solo en X
-            proj.x = p.x;
-            proj.x = std::clamp(proj.x, std::min(a.x,b.x), std::max(a.x,b.x));
-            proj.y = a.y; // mantener Y constante
-        } else {
-            // proyectar ortogonal al segmento
-            double denom = dot(ab, ab);
-            double t = dot(p - a, ab) / denom;
-            t = std::clamp(t, 0.0, 1.0);
-            proj = a + t * ab;
+        double t = dot(p - a, ab) / denom;
+        
+        // Solo considerar proyecciones dentro del segmento o muy cerca
+        if (t < -corner_thresh || t > 1.0 + corner_thresh) {
+            continue;
         }
+        
+        t = std::clamp(t, 0.0, 1.0);
+        Vec2 proj = a + t * ab;
 
-        double dist = (p - proj).norm();
+        ProjectionResult pr;
+        pr.q = proj;
+        pr.seg_id = static_cast<int>(i);
+        pr.t = t;
+        results.push_back(pr);
+    }
 
-        // Opcional: penalizar según ángulo si quieres preferir segmentos más "alineados"
-        double score = dist; // + angle_penalty si quieres
+    // 2. Proyecciones especiales para esquinas (solo si NO hay ya una proyección cercana)
+    for(size_t i = 0; i < pts.size(); ++i)
+    {
+        double d = (p - pts[i]).norm();
+        if(d < corner_thresh)
+        {
+            // Verificar si ya tenemos una proyección suficientemente cercana a este vértice
+            bool already_exists = false;
+            for(const auto& existing : results) {
+                if((existing.q - pts[i]).norm() < dup_thresh) {
+                    already_exists = true;
+                    break;
+                }
+            }
+            
+            if(already_exists) continue;  // Saltar si ya existe
 
-        if(score < min_score) {
-            min_score = score;
-            best.q = proj;
-            best.seg_id = static_cast<int>(i);
-
-            // calcular t relativo sobre el segmento original
-            Vec2 ab_seg = b - a;
-            double denom = dot(ab_seg, ab_seg);
-            if(denom > 1e-14)
-                best.t = dot(proj - a, ab_seg) / denom;
-            else
-                best.t = 0.0;
+            // Para vértices interiores, añadir ambas posibilidades
+            if (i > 0 && i < pts.size() - 1) {
+                // Segmento anterior
+                ProjectionResult pr_prev;
+                pr_prev.q = pts[i];
+                pr_prev.seg_id = static_cast<int>(i-1);
+                pr_prev.t = 1.0;
+                results.push_back(pr_prev);
+                
+                // Segmento siguiente  
+                ProjectionResult pr_next;
+                pr_next.q = pts[i];
+                pr_next.seg_id = static_cast<int>(i);
+                pr_next.t = 0.0;
+                results.push_back(pr_next);
+            }
+            else if (i == 0 && pts.size() > 1) {
+                ProjectionResult pr;
+                pr.q = pts[i];
+                pr.seg_id = 0;
+                pr.t = 0.0;
+                results.push_back(pr);
+            }
+            else if (i == pts.size() - 1 && pts.size() > 1) {
+                ProjectionResult pr;
+                pr.q = pts[i];
+                pr.seg_id = static_cast<int>(pts.size() - 2);
+                pr.t = 1.0;
+                results.push_back(pr);
+            }
         }
     }
 
-    return best;
+    return results;
 }
-
 
 void build_arc_length()
 {

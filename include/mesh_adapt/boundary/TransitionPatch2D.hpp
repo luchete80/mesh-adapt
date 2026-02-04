@@ -162,64 +162,79 @@ TransitionPatch2D build_transition_patch_from_band(
     // --------------------------------------------------
     std::vector<ProjData> all_projections;
     
-    for(int gid : ring_gids) {
-        Vec2 p = band_mesh.node(gid);
-        auto proj = contour.project_with_segment(p);
+    //~ for(int gid : ring_gids) {
+        //~ Vec2 p = band_mesh.node(gid);
+        //~ auto proj = contour.project_with_segment(p);
         
-        //auto proj = contour.project_best_xy(p);
+        //~ //auto proj = contour.project_xy(p);
         
+        //~ ProjData data;
+        //~ data.point = proj.q;
+        //~ data.ring_gid = gid;
+        //~ data.distance = (p - proj.q).norm();
+        //~ data.contour_segment_id = proj.seg_id;
+        
+        //~ // Calcular tangente
+        //~ if(proj.seg_id < static_cast<int>(contour.pts.size()) - 1) {
+            //~ data.tangent = (contour.pts[proj.seg_id + 1] - 
+                           //~ contour.pts[proj.seg_id]).normalized();
+        //~ } else {
+            //~ data.tangent = (contour.pts[proj.seg_id] - 
+                           //~ contour.pts[proj.seg_id - 1]).normalized();
+        //~ }
+        
+        //~ all_projections.push_back(data);
+
+    // <-- PRINT -->
+    //~ std::cout << "[DEBUG] ring_gid=" << gid
+              //~ << " p=(" << p.x << "," << p.y << ")"
+              //~ << " proj=(" << proj.q.x << "," << proj.q.y << ")"
+              //~ << " distance=" << data.distance
+              //~ << " seg_id=" << proj.seg_id << "\n";
+       
+
+    //~ }
+
+for(int gid : ring_gids) {
+    Vec2 p = band_mesh.node(gid);
+
+    // ==========================================
+    // Usar project_corner_aware (obtiene TODAS las proyecciones)
+    // ==========================================
+    std::vector<ProjectionResult> proj_results = contour.project_corner_aware(p);
+    
+    if(proj_results.empty()) {
+        std::cerr << "[WARNING] No se encontraron proyecciones para ring_gid=" << gid << "\n";
+        continue;
+    }
+
+    // ==========================================
+    // Procesar TODAS las proyecciones, no solo la más cercana
+    // ==========================================
+    for(const auto& proj : proj_results) {
         ProjData data;
         data.point = proj.q;
-        data.ring_gid = gid;
+        data.ring_gid = gid;  // Mismo ring_gid para todas
         data.distance = (p - proj.q).norm();
         data.contour_segment_id = proj.seg_id;
-        
-        // Calcular tangente
+
+        // Calcular tangente según segmento
         if(proj.seg_id < static_cast<int>(contour.pts.size()) - 1) {
-            data.tangent = (contour.pts[proj.seg_id + 1] - 
-                           contour.pts[proj.seg_id]).normalized();
+            data.tangent = (contour.pts[proj.seg_id + 1] - contour.pts[proj.seg_id]).normalized();
         } else {
-            data.tangent = (contour.pts[proj.seg_id] - 
-                           contour.pts[proj.seg_id - 1]).normalized();
+            data.tangent = (contour.pts[proj.seg_id] - contour.pts[proj.seg_id - 1]).normalized();
         }
-        
+
         all_projections.push_back(data);
 
-    //~ // <-- PRINT -->
-    std::cout << "[DEBUG] ring_gid=" << gid
-              << " p=(" << p.x << "," << p.y << ")"
-              << " proj=(" << proj.q.x << "," << proj.q.y << ")"
-              << " distance=" << data.distance
-              << " seg_id=" << proj.seg_id << "\n";
-                      
-        //~ auto proj_x = contour.project_xy(p, ProjAxis::X);
-        //~ auto proj_y = contour.project_xy(p, ProjAxis::Y);
-
-        //~ ProjData data_x;
-        //~ data_x.point = proj_x.q;
-        //~ data_x.ring_gid = gid;
-        //~ data_x.distance = (p - proj_x.q).norm();
-        //~ data_x.contour_segment_id = proj_x.seg_id;
-        //~ // Tangente como antes, o incluso Vec2(1,0) si es eje X
-        //~ data_x.tangent = Vec2(1,0);
-
-        //~ ProjData data_y;
-        //~ data_y.point = proj_y.q;
-        //~ data_y.ring_gid = gid;
-        //~ data_y.distance = (p - proj_y.q).norm();
-        //~ data_y.contour_segment_id = proj_y.seg_id;
-        //~ data_y.tangent = Vec2(0,1);
-
-        //~ all_projections.push_back(data_x);
-        //~ all_projections.push_back(data_y);
-
-      //~ std::cout << "[DEBUG] ring_gid=" << gid
-                //~ << " p=(" << p.x << "," << p.y << ")"
-                //~ << " proj=(" << proj_x.q.x << "," << proj_x.q.y << ")"
-                //~ << " distance=" << data_x.distance
-                //~ << " seg_id=" << proj_x.seg_id << "\n";
-
+        std::cout << "[DEBUG] ring_gid=" << gid
+                  << " p=(" << p.x << "," << p.y << ")"
+                  << " proj=(" << proj.q.x << "," << proj.q.y << ")"
+                  << " distance=" << data.distance
+                  << " seg_id=" << proj.seg_id
+                  << " t=" << proj.t << "\n";
     }
+}
     
     // --------------------------------------------------
     // PASO 3: Detectar vértices del contorno
