@@ -280,6 +280,72 @@ std::vector<ProjectionResult> project_corner_aware(const Vec2& p) const
     return results;
 }
 
+std::vector<ProjectionResult> project_corner_aware_xy(const Vec2& p) const
+{
+    std::vector<ProjectionResult> results;
+    const double corner_thresh = 1e-6; // tolerancia para vértices
+    const double dup_thresh = 1e-12;   // para evitar duplicados exactos
+
+    auto push_if_new = [&](const ProjectionResult& pr){
+        for(const auto& existing : results)
+            if((existing.q - pr.q).norm() < dup_thresh) return;
+        results.push_back(pr);
+    };
+
+    // 1️⃣ Proyección sobre segmentos según tangente
+    for(size_t i = 0; i + 1 < pts.size(); ++i)
+    {
+        Vec2 a = pts[i];
+        Vec2 b = pts[i+1];
+        Vec2 ab = b - a;
+        if(dot(ab, ab) < 1e-14) continue;
+
+        bool dominant_x = std::abs(ab.x) >= std::abs(ab.y);
+
+        ProjectionResult pr;
+        pr.seg_id = static_cast<int>(i);
+
+        if(dominant_x) {
+            pr.q.x = p.x;
+            pr.q.y = a.y + (p.x - a.x) * ab.y / ab.x;  // interpola en Y
+            pr.t = (p.x - a.x) / ab.x;
+        } else {
+            pr.q.y = p.y;
+            pr.q.x = a.x + (p.y - a.y) * ab.x / ab.y;  // interpola en X
+            pr.t = (p.y - a.y) / ab.y;
+        }
+
+        pr.t = std::clamp(pr.t, 0.0, 1.0);
+        push_if_new(pr);
+    }
+
+    // 2️⃣ Proyecciones sobre vértices (duplicar si es esquina)
+    for(size_t i = 0; i < pts.size(); ++i)
+    {
+        double d = (p - pts[i]).norm();
+        if(d > corner_thresh) continue;
+
+        // Segmento anterior
+        if(i > 0) {
+            ProjectionResult pr;
+            pr.q = pts[i];
+            pr.seg_id = static_cast<int>(i-1);
+            pr.t = 1.0;
+            push_if_new(pr);
+        }
+        // Segmento siguiente
+        if(i < pts.size() - 1) {
+            ProjectionResult pr;
+            pr.q = pts[i];
+            pr.seg_id = static_cast<int>(i);
+            pr.t = 0.0;
+            push_if_new(pr);
+        }
+    }
+
+    return results;
+}
+
 
 void build_arc_length()
 {
