@@ -109,7 +109,7 @@ void LaplacianSmoother2D::smooth()
         double num = 0.0;
         double den = 0.0;
 
-        for(size_t i = 0; i < nodes_.size(); ++i) {
+        for(int i : internal) {
             Vec2 d = nodes_[i].x - old[i].x;
             num += d.dot(d);
             den += old[i].x.dot(old[i].x);

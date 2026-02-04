@@ -332,6 +332,12 @@ int main() {
     std::vector<int> boundary =
         resmesh.find_ordered_boundary_nodes();
     
+    std::cout << "Boundary Nodes"<<boundary.size()<<std::endl;
+
+    for(int i : boundary)
+        std::cout << i << " ";
+    std::cout << "\n";
+    
 
     std::vector<char> fixed(resmesh.nodes.size(), 0);
     for(int i : boundary)

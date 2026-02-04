@@ -2,6 +2,8 @@
 #include <map>
 #include <set>
 
+#include <unordered_set>
+
 namespace mesh_adapt {
 
 int Mesh2D::add_node(double x, double y) {
@@ -64,9 +66,13 @@ std::vector<int> Mesh2D::find_boundary_nodes() const {
 std::vector<int> Mesh2D::find_ordered_boundary_nodes() const {
     using Edge = std::pair<int,int>;
     std::map<Edge,int> edge_count;
-    auto add_edge = [&](int a, int b){ if(a>b) std::swap(a,b); edge_count[{a,b}]++; };
 
-    // contar aristas
+    auto add_edge = [&](int a, int b){
+        if(a>b) std::swap(a,b);
+        edge_count[{a,b}]++;
+    };
+
+    // contar todas las aristas
     for(const auto& q : quads) {
         add_edge(q[0],q[1]);
         add_edge(q[1],q[2]);
@@ -74,33 +80,62 @@ std::vector<int> Mesh2D::find_ordered_boundary_nodes() const {
         add_edge(q[3],q[0]);
     }
 
-    // construir vecinos de nodos frontera
+    // construir vecinos de nodos frontera (aristas únicas)
     std::map<int,std::vector<int>> neighbors;
-    for(auto& [e,count]: edge_count){
-        if(count==1){
+    for(const auto& [e,count] : edge_count) {
+        if(count==1) {
             neighbors[e.first].push_back(e.second);
             neighbors[e.second].push_back(e.first);
+        }
+    }
+
+    // --- validar que no haya nodos con más de 2 vecinos ---
+    for(const auto& [node,nbs] : neighbors) {
+        if(nbs.size() != 2) {
+            std::cerr << "[Warning] Boundary node " << node 
+                      << " tiene " << nbs.size() << " vecinos.\n";
         }
     }
 
     std::vector<int> ordered;
     if(neighbors.empty()) return ordered;
 
-    // empezar desde un nodo cualquiera
+    std::unordered_set<int> visited;
     int start = neighbors.begin()->first;
     int prev = -1;
     int current = start;
-    do {
+
+    while(visited.size() < neighbors.size()) {
         ordered.push_back(current);
+        visited.insert(current);
+
         auto& nbs = neighbors[current];
-        int next = (nbs[0]!=prev) ? nbs[0] : nbs[1];
+        int next = -1;
+        for(int nb : nbs) {
+            if(nb != prev && visited.find(nb) == visited.end()) {
+                next = nb;
+                break;
+            }
+        }
+
+        if(next == -1) {
+            // puede ser ciclo cerrado
+            for(int nb : nbs) {
+                if(nb != prev) {
+                    next = nb;
+                    break;
+                }
+            }
+        }
+
         prev = current;
         current = next;
-    } while(current != start && ordered.size()<neighbors.size());
+
+        if(current == -1 || current == start) break; // cerramos el ciclo
+    }
 
     return ordered;
 }
-
 
 
 } // namespace mesh_adapt
