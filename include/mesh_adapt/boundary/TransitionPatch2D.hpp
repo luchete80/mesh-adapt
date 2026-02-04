@@ -182,6 +182,28 @@ TransitionPatch2D build_transition_patch_from_band(
         }
         
         all_projections.push_back(data);
+        
+        //~ auto proj_x = contour.project_xy(p, ProjAxis::X);
+        //~ auto proj_y = contour.project_xy(p, ProjAxis::Y);
+
+        //~ ProjData data_x;
+        //~ data_x.point = proj_x.q;
+        //~ data_x.ring_gid = gid;
+        //~ data_x.distance = (p - proj_x.q).norm();
+        //~ data_x.contour_segment_id = proj_x.seg_id;
+        //~ // Tangente como antes, o incluso Vec2(1,0) si es eje X
+        //~ data_x.tangent = Vec2(1,0);
+
+        //~ ProjData data_y;
+        //~ data_y.point = proj_y.q;
+        //~ data_y.ring_gid = gid;
+        //~ data_y.distance = (p - proj_y.q).norm();
+        //~ data_y.contour_segment_id = proj_y.seg_id;
+        //~ data_y.tangent = Vec2(0,1);
+
+        //~ all_projections.push_back(data_x);
+        //~ all_projections.push_back(data_y);
+
     }
     
     // --------------------------------------------------

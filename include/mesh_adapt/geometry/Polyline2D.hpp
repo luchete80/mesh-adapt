@@ -13,6 +13,14 @@ namespace mesh_adapt {
     double t;      // parámetro local en ese segmento
 };
 
+struct ProjectionXY {
+    Vec2 q;      // punto proyectado
+    int seg_id;  // índice del segmento
+};
+
+// Proyección solo en X o en Y
+enum class ProjAxis { X, Y };
+
 class Polyline2D : public Contour2D {
 public:
     std::vector<Vec2> pts;
@@ -68,6 +76,47 @@ ProjectionResult project_with_segment(const Vec2& p) const
 
     return res;
 }
+
+ProjectionResult project_xy(const Vec2& p, ProjAxis axis) const {
+    ProjectionResult res;
+    res.q = pts[0];
+    res.seg_id = 0;
+    res.t = 0.0;
+
+    double min_dist = std::numeric_limits<double>::max();
+
+    for(size_t i = 0; i + 1 < pts.size(); ++i) {
+        Vec2 a = pts[i];
+        Vec2 b = pts[i+1];
+        Vec2 proj;
+
+        if(axis == ProjAxis::X) {
+            proj.x = p.x;
+            // limitar dentro del segmento
+            proj.y = std::clamp(p.y, std::min(a.y, b.y), std::max(a.y, b.y));
+        } else { // ProjAxis::Y
+            proj.y = p.y;
+            proj.x = std::clamp(p.x, std::min(a.x, b.x), std::max(a.x, b.x));
+        }
+
+        double d = (p - proj).norm();
+        if(d < min_dist) {
+            min_dist = d;
+            res.q = proj;
+            res.seg_id = static_cast<int>(i);
+            // calcular t relativo sobre el segmento original
+            Vec2 ab = b - a;
+            double denom = dot(ab, ab);
+            if(denom > 1e-14)
+                res.t = dot(proj - a, ab) / denom;
+            else
+                res.t = 0.0;
+        }
+    }
+
+    return res;
+}
+
 
 
 void build_arc_length()
