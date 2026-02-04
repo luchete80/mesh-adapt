@@ -298,23 +298,33 @@ int main() {
     export_triangles_to_vtk(dt.get_points(), patch.tris_left, "patch_tris_left.vtk");
     export_quads_to_vtk(dt.get_points(), patch.quads, "patch_quads.vtk");
 
-    //debug_print_patch_nodes(patch);
+
+    
     
     subdivide_tris_to_quads(patch);
 
+    //debug_print_patch_nodes(patch);
+    std::vector<std::array<int,4>> all_patch_quads = patch.quads;
+    all_patch_quads.insert(all_patch_quads.end(), patch.quads_fallback.begin(), patch.quads_fallback.end());
+
+    export_quads_to_vtk(patch.points, all_patch_quads,
+                            "all_quads_patch.vtk");    
     export_quads_to_vtk(patch.points, patch.quads_fallback, "patch_quads_fallback.vtk");
     
     
     MeshToSub mesh2sub(band_mesh, patch);
     export_mesh_to_vtk(mesh2sub.mesh,       "mesh2sub.vtk");
      
+    debug_mesh_to_sub(mesh2sub);
     
     std::map<Edge, EdgeInfo> edge_map = build_edge_map(mesh2sub);
                                 
     debug_edge_map(edge_map);
     
-    QuadRefiner quad_refiner(mesh2sub.mesh.quads, edge_map, mesh2sub.subdivided_edges_global);
-    //QuadRefiner quad_refiner(mesh2sub.mesh.quads, edge_map, mesh2sub.subdivided_edge_to_global);
+    debug_edges_vs_map(patch);
+    
+    //QuadRefiner quad_refiner(mesh2sub.mesh.quads, edge_map, mesh2sub.subdivided_edges_global);
+    QuadRefiner quad_refiner(mesh2sub.mesh.quads, edge_map, mesh2sub.subdivided_edge_to_global);
     quad_refiner.refine_to_conform();
 
     SubdivisionResult result = quad_refiner.subdivide_quads_with_nodes(mesh2sub.mesh.get_nodes());

@@ -80,12 +80,18 @@ MeshToSub::MeshToSub(const Mesh2D& band_mesh, const TransitionPatch2D& patch) {
                       << i0 << "," << i1 << ")\n";
         }
     }
-    
-    // Nuevo: map de edge local → nodo global (midpoint/baricentro)
-    for(const auto& [edge, lid] : patch.subdivided_edge_to_node) {
-        int gid = local_to_global[lid];
+        
+    for(const auto& [edge_local, lid] : patch.subdivided_edge_to_node) {
+        int i0 = (patch.flags[edge_local.a] == NodeFlag::NODE_RING) ? 
+                 patch.local_to_global[edge_local.a] : local_to_global[edge_local.a];
+        int i1 = (patch.flags[edge_local.b] == NodeFlag::NODE_RING) ? 
+                 patch.local_to_global[edge_local.b] : local_to_global[edge_local.b];
+
+        Edge e(i0, i1); // global edge
+
+        int gid = local_to_global[lid]; // el nodo asociado sigue siendo local→global
         if(gid >= 0)
-            subdivided_edge_to_global[edge] = gid;
+            subdivided_edge_to_global[e] = gid;
     }
 
     // 6) Verificar consistencia
@@ -293,6 +299,57 @@ inline void debug_edge_map(const std::map<Edge, EdgeInfo>& edge_map) {
     std::cout << "Total edges: " << edge_map.size() << "\n";
     std::cout << "Subdivided edges: " << subdivided_count << "\n";
     std::cout << "Shared edges: " << shared_count << "\n";
+}
+
+
+inline void debug_subdivided_edges(const MeshToSub& mts) {
+    std::cout << "\n[DEBUG] Subdivided edges (global indices)\n";
+    std::cout << "-----------------------------------------\n";
+
+    if(mts.subdivided_edges_global.empty()) {
+        std::cout << "No subdivided edges.\n";
+    } else {
+        for(const auto& e : mts.subdivided_edges_global) {
+            std::cout << "(" << e.a << ", " << e.b << ")";
+            // Mostrar si existe nodo asociado en el map
+            auto it = mts.subdivided_edge_to_global.find(e);
+            if(it != mts.subdivided_edge_to_global.end()) {
+                std::cout << " -> midpoint/global node = " << it->second;
+            }
+            std::cout << "\n";
+        }
+    }
+
+    std::cout << "-----------------------------------------\n";
+    std::cout << "Total subdivided edges: " << mts.subdivided_edges_global.size() << "\n";
+    std::cout << "Total edges in edge->node map: " << mts.subdivided_edge_to_global.size() << "\n\n";
+}
+
+// Función combinada: imprime tanto set como map
+inline void debug_mesh_to_sub(const MeshToSub& mts) {
+    std::cout << "[DEBUG] MeshToSub info\n";
+    std::cout << "Number of nodes: " << mts.num_nodes() << "\n";
+    std::cout << "Number of quads: " << mts.num_quads() << "\n";
+
+    debug_subdivided_edges(mts);
+
+    // Imprimir nodos asociados a edges subdivididos
+    std::set<int> nodes_of_subdivided_edges;
+    for(const auto& e : mts.subdivided_edges_global) {
+        nodes_of_subdivided_edges.insert(e.a);
+        nodes_of_subdivided_edges.insert(e.b);
+
+        auto it = mts.subdivided_edge_to_global.find(e);
+        if(it != mts.subdivided_edge_to_global.end()) {
+            nodes_of_subdivided_edges.insert(it->second);
+        }
+    }
+
+    std::cout << "Nodes involved in subdivided edges:\n";
+    for(int gid : nodes_of_subdivided_edges) {
+        std::cout << "global node = " << gid << "\n";
+    }
+
 }
 
 } // namespace mesh_adapt

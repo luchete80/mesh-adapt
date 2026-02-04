@@ -8,15 +8,16 @@ namespace mesh_adapt {
 
 class QuadRefiner {
 public:
-    //~ QuadRefiner(std::vector<Quad>& quads,
-                //~ std::map<Edge, EdgeInfo>& edge_map,
-                //~ const std::map<Edge,int>& initially_refined = {})
-        //~ : quads_(quads), edge_map_(edge_map), initially_refined_(initially_refined) {}
-
     QuadRefiner(std::vector<Quad>& quads,
                 std::map<Edge, EdgeInfo>& edge_map,
-                const std::set<Edge>& initially_refined = {})
-        : quads_(quads), edge_map_(edge_map), initially_refined_(initially_refined) {}
+                const std::map<Edge,int>& initially_refined = {})
+        : quads_(quads), edge_map_(edge_map), initially_refined_(initially_refined) {
+          
+          for(const auto& kv : initially_refined_) {
+    std::cout << "Init edge: (" << kv.first.a << "," << kv.first.b << ") -> " << kv.second << "\n";
+}
+}
+
         
     void refine_to_conform(int max_iterations = 15) {
         for(int it=0; it<max_iterations; ++it){
@@ -55,8 +56,8 @@ public:
     
     std::vector<QuadPattern> quad_patterns_;
     std::vector<int> quad_rotations_;
-    std::set<Edge> initially_refined_; // edges que ya tienen nodos
-    //std::map<Edge,int> initially_refined_; // edges del patch -> nodo ya creado
+    //std::set<Edge> initially_refined_; // edges que ya tienen nodos
+    std::map<Edge,int> initially_refined_; // edges del patch -> nodo ya creado
     
 
     int get_max_node_index() const {
@@ -126,204 +127,104 @@ public:
     }
     
 
-    SubdivisionResult subdivide_quads_with_nodes(const std::vector<Node2D>& nodes) const {
-        SubdivisionResult result;
+SubdivisionResult subdivide_quads_with_nodes(const std::vector<Node2D>& nodes) const {
+    SubdivisionResult result;
 
-        // Copiamos los nodos originales
-        result.nodes = nodes;
-        result.max_node_index = static_cast<int>(nodes.size() - 1); // último índice válido
+    // Copiamos los nodos originales
+    result.nodes = nodes;
+    result.max_node_index = static_cast<int>(nodes.size() - 1); // último índice válido
 
-        for(size_t qid = 0; qid < quads_.size(); ++qid) {
-            const auto& quad = quads_[qid];
-            QuadPattern pat = quad_patterns_[qid];
-            int rot = quad_rotations_[qid];
+    for(size_t qid = 0; qid < quads_.size(); ++qid) {
+        const auto& quad = quads_[qid];
+        QuadPattern pat = quad_patterns_[qid];
+        int rot = quad_rotations_[qid];
 
-            int i0 = quad[0], i1 = quad[1], i2 = quad[2], i3 = quad[3];
+        int i0 = quad[0], i1 = quad[1], i2 = quad[2], i3 = quad[3];
 
-            // --- Helpers ---
-            auto get_edge_midpoint = [&](int a, int b) -> int {
-                Edge e(a,b);
+        // --- Helpers ---
+        auto get_edge_midpoint = [&](int a, int b) -> int {
+            Edge e(a,b);
 
-
-                // Primero revisamos nodos creados antes del refinamiento
-                if(initially_refined_.count(e)) {
-                    // asumimos que el nodo del midpoint ya está en result.nodes en su índice correcto
-                    // podrías mapear inicialmente_refined_ a un map de Edge->node_index si es necesario
-                    auto it = result.edge_midpoints.find(e);
-                    if(it != result.edge_midpoints.end()) return it->second;
-                    // si no está, asumimos que el nodo ya existe al final de result.nodes
-                    // ⚠️aquí conviene tener un map externo que trackee estos nodos globales
-                }
-
-
-                if(result.edge_midpoints.count(e)) return result.edge_midpoints[e];
-
-                // Crear nodo nuevo en el medio
-                Node2D midpoint = 0.5*(result.nodes[a] + result.nodes[b]);
-                result.nodes.push_back(midpoint);
-
-                result.max_node_index = static_cast<int>(result.nodes.size() - 1);
-                result.edge_midpoints[e] = result.max_node_index;
-                return result.max_node_index;
-            };
-
-            auto get_quad_center = [&]() -> int {
-                if(result.quad_centers.count(qid)) return result.quad_centers[qid];
-
-                // Crear nodo en el centro del quad
-                Node2D center = 0.25*(result.nodes[i0] + result.nodes[i1] + result.nodes[i2] + result.nodes[i3]);
-                result.nodes.push_back(center);
-
-                result.max_node_index = static_cast<int>(result.nodes.size() - 1);
-                result.quad_centers[qid] = result.max_node_index;
-                return result.max_node_index;
-            };
-
-            // ==========================
-            if(pat == PAT_NONE) {
-                result.new_quads.push_back(quad);
+            // Primero revisamos si el edge ya tenía nodo creado (map)
+            auto it_init = initially_refined_.find(e);
+            if(it_init != initially_refined_.end()) {
+                int idx = it_init->second;
+                result.edge_midpoints[e] = idx; // asegurar que quede en edge_midpoints
+                std::cout << "[INFO] Edge (" << e.a << "," << e.b << ") already has node " << idx << "\n";
+                return idx;
             }
-            else if(pat == PAT_TWO_OPP) {
-                std::array<int,4> q;
-                for(int i=0;i<4;++i) q[i] = quad[(i + rot)%4];
-                int a=q[0], b=q[1], c=q[2], d=q[3];
 
-                int m_ab = get_edge_midpoint(a,b);
-                int m_cd = get_edge_midpoint(c,d);
+            // Si ya se creó en esta iteración
+            auto it_mid = result.edge_midpoints.find(e);
+            if(it_mid != result.edge_midpoints.end()) return it_mid->second;
 
-                result.new_quads.push_back({a, m_ab, m_cd, d});
-                result.new_quads.push_back({m_ab, b, c, m_cd});
-            }
-            else if(pat == PAT_TWO_ADJ) {
-                std::array<int,4> q;
-                for(int i=0;i<4;++i) q[i] = quad[(i + rot)%4];
-                int a=q[0], b=q[1], c=q[2], d=q[3];
+            // Crear nodo nuevo en el medio
+            Node2D midpoint = 0.5*(result.nodes[a] + result.nodes[b]);
+            result.nodes.push_back(midpoint);
 
-                int m_ab = get_edge_midpoint(a,b);
-                int m_bc = get_edge_midpoint(b,c);
-                int cc   = get_quad_center();
+            result.max_node_index = static_cast<int>(result.nodes.size() - 1);
+            result.edge_midpoints[e] = result.max_node_index;
+            return result.max_node_index;
+        };
 
-                result.new_quads.push_back({a, m_ab, cc, d});
-                result.new_quads.push_back({m_ab, b, m_bc, cc});
-                result.new_quads.push_back({d, cc, m_bc, c});
-            }
-            else if(pat == PAT_THREE || pat == PAT_FULL) {
-                int m01 = get_edge_midpoint(i0,i1);
-                int m12 = get_edge_midpoint(i1,i2);
-                int m23 = get_edge_midpoint(i2,i3);
-                int m30 = get_edge_midpoint(i3,i0);
-                int c   = get_quad_center();
+        auto get_quad_center = [&]() -> int {
+            if(result.quad_centers.count(qid)) return result.quad_centers[qid];
 
-                result.new_quads.push_back({i0, m01, c,   m30});
-                result.new_quads.push_back({m01, i1, m12, c  });
-                result.new_quads.push_back({c,   m12, i2, m23});
-                result.new_quads.push_back({m30, c,   m23, i3});
-            }
-            else {
-                result.new_quads.push_back(quad);
-            }
+            Node2D center = 0.25*(result.nodes[i0] + result.nodes[i1] + result.nodes[i2] + result.nodes[i3]);
+            result.nodes.push_back(center);
+
+            result.max_node_index = static_cast<int>(result.nodes.size() - 1);
+            result.quad_centers[qid] = result.max_node_index;
+            return result.max_node_index;
+        };
+
+        // ==========================
+        if(pat == PAT_NONE) {
+            result.new_quads.push_back(quad);
         }
+        else if(pat == PAT_TWO_OPP) {
+            std::array<int,4> q;
+            for(int i=0;i<4;++i) q[i] = quad[(i + rot)%4];
+            int a=q[0], b=q[1], c=q[2], d=q[3];
 
-        return result;
+            int m_ab = get_edge_midpoint(a,b);
+            int m_cd = get_edge_midpoint(c,d);
+
+            result.new_quads.push_back({a, m_ab, m_cd, d});
+            result.new_quads.push_back({m_ab, b, c, m_cd});
+        }
+        else if(pat == PAT_TWO_ADJ) {
+            std::array<int,4> q;
+            for(int i=0;i<4;++i) q[i] = quad[(i + rot)%4];
+            int a=q[0], b=q[1], c=q[2], d=q[3];
+
+            int m_ab = get_edge_midpoint(a,b);
+            int m_bc = get_edge_midpoint(b,c);
+            int cc   = get_quad_center();
+
+            result.new_quads.push_back({a, m_ab, cc, d});
+            result.new_quads.push_back({m_ab, b, m_bc, cc});
+            result.new_quads.push_back({d, cc, m_bc, c});
+        }
+        else if(pat == PAT_THREE || pat == PAT_FULL) {
+            int m01 = get_edge_midpoint(i0,i1);
+            int m12 = get_edge_midpoint(i1,i2);
+            int m23 = get_edge_midpoint(i2,i3);
+            int m30 = get_edge_midpoint(i3,i0);
+            int c   = get_quad_center();
+
+            result.new_quads.push_back({i0, m01, c,   m30});
+            result.new_quads.push_back({m01, i1, m12, c  });
+            result.new_quads.push_back({c,   m12, i2, m23});
+            result.new_quads.push_back({m30, c,   m23, i3});
+        }
+        else {
+            result.new_quads.push_back(quad);
+        }
     }
 
-//~ SubdivisionResult subdivide_quads_with_nodes(const std::vector<Node2D>& nodes) const {
-    //~ SubdivisionResult result;
-
-    //~ // Copiamos los nodos originales
-    //~ result.nodes = nodes;
-    //~ result.max_node_index = static_cast<int>(nodes.size() - 1); // último índice válido
-
-    //~ for(size_t qid = 0; qid < quads_.size(); ++qid) {
-        //~ const auto& quad = quads_[qid];
-        //~ QuadPattern pat = quad_patterns_[qid];
-        //~ int rot = quad_rotations_[qid];
-
-        //~ int i0 = quad[0], i1 = quad[1], i2 = quad[2], i3 = quad[3];
-
-        //~ // --- Helpers ---
-        //~ auto get_edge_midpoint = [&](int a, int b) -> int {
-            //~ Edge e(a,b);
-
-            //~ // Primero revisamos si el edge ya tenía nodo creado (map)
-            //~ auto it_init = initially_refined_.find(e);
-            //~ if(it_init != initially_refined_.end()) {
-                //~ int idx = it_init->second;
-                //~ result.edge_midpoints[e] = idx; // asegurar que quede en edge_midpoints
-                //~ return idx;
-            //~ }
-
-            //~ // Si ya se creó en esta iteración
-            //~ auto it_mid = result.edge_midpoints.find(e);
-            //~ if(it_mid != result.edge_midpoints.end()) return it_mid->second;
-
-            //~ // Crear nodo nuevo en el medio
-            //~ Node2D midpoint = 0.5*(result.nodes[a] + result.nodes[b]);
-            //~ result.nodes.push_back(midpoint);
-
-            //~ result.max_node_index = static_cast<int>(result.nodes.size() - 1);
-            //~ result.edge_midpoints[e] = result.max_node_index;
-            //~ return result.max_node_index;
-        //~ };
-
-        //~ auto get_quad_center = [&]() -> int {
-            //~ if(result.quad_centers.count(qid)) return result.quad_centers[qid];
-
-            //~ Node2D center = 0.25*(result.nodes[i0] + result.nodes[i1] + result.nodes[i2] + result.nodes[i3]);
-            //~ result.nodes.push_back(center);
-
-            //~ result.max_node_index = static_cast<int>(result.nodes.size() - 1);
-            //~ result.quad_centers[qid] = result.max_node_index;
-            //~ return result.max_node_index;
-        //~ };
-
-        //~ // ==========================
-        //~ if(pat == PAT_NONE) {
-            //~ result.new_quads.push_back(quad);
-        //~ }
-        //~ else if(pat == PAT_TWO_OPP) {
-            //~ std::array<int,4> q;
-            //~ for(int i=0;i<4;++i) q[i] = quad[(i + rot)%4];
-            //~ int a=q[0], b=q[1], c=q[2], d=q[3];
-
-            //~ int m_ab = get_edge_midpoint(a,b);
-            //~ int m_cd = get_edge_midpoint(c,d);
-
-            //~ result.new_quads.push_back({a, m_ab, m_cd, d});
-            //~ result.new_quads.push_back({m_ab, b, c, m_cd});
-        //~ }
-        //~ else if(pat == PAT_TWO_ADJ) {
-            //~ std::array<int,4> q;
-            //~ for(int i=0;i<4;++i) q[i] = quad[(i + rot)%4];
-            //~ int a=q[0], b=q[1], c=q[2], d=q[3];
-
-            //~ int m_ab = get_edge_midpoint(a,b);
-            //~ int m_bc = get_edge_midpoint(b,c);
-            //~ int cc   = get_quad_center();
-
-            //~ result.new_quads.push_back({a, m_ab, cc, d});
-            //~ result.new_quads.push_back({m_ab, b, m_bc, cc});
-            //~ result.new_quads.push_back({d, cc, m_bc, c});
-        //~ }
-        //~ else if(pat == PAT_THREE || pat == PAT_FULL) {
-            //~ int m01 = get_edge_midpoint(i0,i1);
-            //~ int m12 = get_edge_midpoint(i1,i2);
-            //~ int m23 = get_edge_midpoint(i2,i3);
-            //~ int m30 = get_edge_midpoint(i3,i0);
-            //~ int c   = get_quad_center();
-
-            //~ result.new_quads.push_back({i0, m01, c,   m30});
-            //~ result.new_quads.push_back({m01, i1, m12, c  });
-            //~ result.new_quads.push_back({c,   m12, i2, m23});
-            //~ result.new_quads.push_back({m30, c,   m23, i3});
-        //~ }
-        //~ else {
-            //~ result.new_quads.push_back(quad);
-        //~ }
-    //~ }
-
-    //~ return result;
-//~ }
+    return result;
+}
 
 
 };

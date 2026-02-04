@@ -549,90 +549,6 @@ double quad_quality(const std::array<int,4>& q, const std::vector<Vec2>& pts)
 }
 
 
-//~ void merge_triangles_to_quads(TransitionPatch2D& patch, double Qmin = 5.0)
-//~ {
-    //~ const auto& tris = patch.triangles;
-    //~ const auto& pts  = patch.points;
-
-    //~ std::map<Edge, std::vector<int>> edge_to_tris;
-
-    //~ // 1. Construir edge -> triángulos
-    //~ for(size_t t=0; t<tris.size(); ++t)
-    //~ {
-        //~ const auto& tri = tris[t];
-        //~ edge_to_tris[Edge(tri[0],tri[1])].push_back((int)t);
-        //~ edge_to_tris[Edge(tri[1],tri[2])].push_back((int)t);
-        //~ edge_to_tris[Edge(tri[2],tri[0])].push_back((int)t);
-    //~ }
-
-    //~ std::vector<QuadCandidate> candidates;
-
-    //~ // 2. Generar todos los candidatos
-    //~ for(const auto& it : edge_to_tris)
-    //~ {
-        //~ const auto& tri_ids = it.second;
-        //~ if(tri_ids.size() != 2) continue; // debe ser compartido por 2 triángulos
-
-        //~ int t0 = tri_ids[0];
-        //~ int t1 = tri_ids[1];
-
-        //~ // vértices únicos de ambos triángulos
-        //~ std::set<int> verts;
-        //~ verts.insert(tris[t0].begin(), tris[t0].end());
-        //~ verts.insert(tris[t1].begin(), tris[t1].end());
-
-        //~ if(verts.size() != 4) continue; // no forma un quad
-
-        //~ std::array<int,4> quad;
-        //~ int k=0;
-        //~ for(int v : verts) quad[k++] = v;
-
-        //~ double Q = quad_quality(quad, pts); // tu función de calidad
-
-        //~ std::cout << "[DEBUG] Candidate quad (" 
-                  //~ << quad[0] << "," << quad[1] << "," 
-                  //~ << quad[2] << "," << quad[3] 
-                  //~ << ") Q = " << Q << "\n";
-
-        //~ candidates.push_back({Q, t0, t1, quad});
-    //~ }
-
-    //~ std::cout << "[DEBUG] Total candidates: " << candidates.size() << "\n";
-
-    //~ // 3. Ordenar por calidad (menor Q = peor)
-    //~ std::sort(candidates.begin(), candidates.end(),
-        //~ [](const QuadCandidate& a, const QuadCandidate& b){
-            //~ return a.Q < b.Q;
-        //~ });
-
-    //~ std::vector<bool> used_tris(tris.size(), false);
-    //~ patch.quads.clear();
-
-    //~ // 4. Selección greedy
-    //~ int accepted = 0;
-    //~ for(const auto& cand : candidates)
-    //~ {
-        //~ if(used_tris[cand.t0] || used_tris[cand.t1]) continue;
-        //~ if(cand.Q > Qmin) continue; // criterio mínimo
-
-        //~ patch.quads.push_back(cand.quad);
-        //~ used_tris[cand.t0] = true;
-        //~ used_tris[cand.t1] = true;
-        //~ accepted++;
-    //~ }
-
-    //~ std::cout << "[DEBUG] Quads accepted: " << accepted << "\n";
-
-    //~ // 5. Triángulos restantes
-    //~ patch.tris_left.clear();
-    //~ for(size_t t=0; t<tris.size(); ++t)
-        //~ if(!used_tris[t])
-            //~ patch.tris_left.push_back(tris[t]);
-
-    //~ std::cout << "[DEBUG] Triangles left: " << patch.tris_left.size() << "\n";
-//~ }
-
-
 void merge_triangles_to_quads(TransitionPatch2D& patch, double Qmin = 5.0)
 {
     const auto& tris = patch.triangles;
@@ -788,6 +704,39 @@ inline void subdivide_tris_to_quads(
 
     patch.quads_fallback.insert(patch.quads_fallback.end(), new_quads.begin(), new_quads.end());
     patch.tris_left.clear(); // todos los tri ya subdivididos
+}
+
+
+// Función de debug para comparar set vs map
+inline void debug_edges_vs_map(const TransitionPatch2D& patch)
+{
+    std::cout << "\n[DEBUG] Edges subdivided (set vs map)\n";
+    std::cout << "--------------------------------------------------\n";
+    std::cout << "Edge(a,b) | in set? | in map? | mapped node\n";
+    std::cout << "--------------------------------------------------\n";
+
+    // Recorrer todos los edges que aparecen en set o map
+    std::set<Edge> all_edges;
+    all_edges.insert(patch.subdivided_edges.begin(), patch.subdivided_edges.end());
+    for(const auto& kv : patch.subdivided_edge_to_node)
+        all_edges.insert(kv.first);
+
+    for(const auto& e : all_edges)
+    {
+        bool in_set = patch.subdivided_edges.count(e) > 0;
+        auto it_map = patch.subdivided_edge_to_node.find(e);
+        bool in_map = it_map != patch.subdivided_edge_to_node.end();
+        int mapped_node = in_map ? it_map->second : -1;
+
+        std::cout << "(" << std::setw(3) << e.a << "," << std::setw(3) << e.b << ")"
+                  << " | " << std::setw(6) << (in_set ? "YES" : "NO")
+                  << " | " << std::setw(6) << (in_map ? "YES" : "NO")
+                  << " | " << std::setw(6) << mapped_node
+                  << "\n";
+    }
+    std::cout << "--------------------------------------------------\n";
+    std::cout << "[DEBUG] Total edges in set: " << patch.subdivided_edges.size() 
+              << ", in map: " << patch.subdivided_edge_to_node.size() << "\n\n";
 }
 
 
