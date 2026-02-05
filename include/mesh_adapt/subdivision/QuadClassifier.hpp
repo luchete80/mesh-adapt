@@ -15,6 +15,8 @@ enum QuadPattern {
     PAT_THREE,
     PAT_FULL
 };
+
+////to be deleted
 class QuadClassifier
 {
 public:
@@ -81,5 +83,41 @@ private:
     const std::map<Edge, EdgeInfo>& edge_map_;
 };
 
+
+
+QuadPattern classify_quad(
+    const Quad& q,
+    const EdgeState edge_state[4] // por ej: NONE / SUBDIVIDED / BOUNDARY
+) {
+    bool refined[4];
+    int count = 0;
+
+    for (int i = 0; i < 4; ++i) {
+        refined[i] = (edge_state[i] == SUBDIVIDED);
+        if (refined[i]) count++;
+    }
+
+    switch (count) {
+    case 0:
+        return PAT_NONE;
+
+    case 1:
+        return PAT_ONE;
+
+    case 2:
+        // adyacentes o opuestas
+        if (refined[0] && refined[2]) return PAT_TWO_OPP;
+        if (refined[1] && refined[3]) return PAT_TWO_OPP;
+        return PAT_TWO_ADJ;
+
+    case 3:
+        return PAT_THREE;
+
+    case 4:
+        return PAT_FULL;
+    }
+
+    return PAT_NONE;
+}
 
 }
