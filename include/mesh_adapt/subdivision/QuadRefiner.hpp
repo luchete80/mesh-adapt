@@ -138,6 +138,13 @@ public:
         auto it = edge_map_.find(e);
         return it != edge_map_.end() && has_cause(it->second, RefinementCause::INITIAL);
     }
+
+inline bool is_external_node(int nid) const {
+    return meshsub.mesh.nodes[nid].is_external();
+}
+inline int count_external_nodes(const Edge& e) const {
+    return is_external_node(e.a) + is_external_node(e.b);
+}
     
     //Marks edges from quad pattern
     void mark_edges_for_subdivision() {
@@ -168,14 +175,17 @@ public:
                     //edge_map_[edges[(rot+3)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
                     
                     //~ ////// NEW; CHECK THE INITIAL CONDITION
-                    Edge& e_initial = edges[rot];
-                    Edge& eR = edges[(rot+1)%4];
-                    Edge& eL = edges[(rot+3)%4];
+                    Edge& e = edges[rot];
+                    Edge& eR = edges[(rot+3)%4];
+                    Edge& eL = edges[(rot+1)%4];
+
+                    const Node2D& n0 = meshsub.mesh.nodes[e.a];
+                    const Node2D& n1 = meshsub.mesh.nodes[e.b];
                     
                     if(is_initial_edge(e_initial))
                     {   
 
-                        std::cout << "SUBDIVISION"<< ") INITIAL edge=(" << e_initial.a << "," << e_initial.b<<")"<<std::endl;
+                        std::cout << "SUBDIVISION"<< ") INITIAL edge=(" << e.a << "," << e_initial.b<<")"<<std::endl;
                         if(edge_map_[eL].is_external && !edge_map_[eR].is_external)
                             std::cout << "SUBDIVISION"<< ") NB LEFT EXTERNAL =(" << eL.a << "," << eL.b<<")"<<std::endl;
                         else if(edge_map_[eR].is_external && !edge_map_[eL].is_external)
@@ -183,12 +193,21 @@ public:
                         else if(edge_map_[eL].is_external && edge_map_[eR].is_external)
                             std::cout << "SUBDIVISION L& R INTERNAL "<< std::endl;
 
+                        //if(!edge_map_[eL].is_external){
+                        if(count_external_nodes(e)==1){
+                           if(is_external_node(n0))
+                               edge_map_[eL].subdivide = true; 
+                            else
+                               edge_map_[eR].subdivide = true;    
+                        }
 
-                        edge_map_[edges[rot]].subdivide = true;
-                        edge_map_[edges[(rot+1)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
 
-                        initially_refined_.erase(e_initial);
+                        
+
+                        initially_refined_.erase(e);
                     } else {
+
+                        
                         // ///IF BOUNDARY;TRY TO FORCE EXTERNAL NODES TO BE THE ADJACENT 
 
                         // // IF NOT ANY OTHER EDGE EDGE CHECK IF IS BOUNDARY QUAD TO FORCE THAT ADJ SIDE OT BE OUTER
