@@ -153,12 +153,6 @@ public:
                         //~ Edge& eR = edges[(rot+1)%4];
                         //~ Edge& eL = edges[(rot+3)%4];
 
-                        if(edge_map_[eR].subdivide && !initially_refined_.count(eR))
-                            edge_map_[eR].subdivide = true;
-                        else if(edge_map_[eL].subdivide && !initially_refined_.count(eL))
-                            edge_map_[eL].subdivide = true;
-                        else
-                            edge_map_[eR].subdivide = true; // fallback estable
 
                         //~ Edge* chosen_edge = nullptr;
 
@@ -183,23 +177,23 @@ public:
                         //~ // Cambiar flag de INITIAL a USED
                         //~ initially_refined_.erase(e_initial); // o marcar en edge_map_[e_initial] como USED
                     //~ }
-                    else {
-                        // lógica normal de vecinos
-                        int eL_idx = (rot + 3) % 4;
-                        int eR_idx = (rot + 1) % 4;
+                    //~ else {
+                        //~ // lógica normal de vecinos
+                        //~ int eL_idx = (rot + 3) % 4;
+                        //~ int eR_idx = (rot + 1) % 4;
 
-                        bool L_ref = neighbor_is_refined(edges[eL_idx]);
-                        bool R_ref = neighbor_is_refined(edges[eR_idx]);
+                        //~ bool L_ref = neighbor_is_refined(edges[eL_idx]);
+                        //~ bool R_ref = neighbor_is_refined(edges[eR_idx]);
 
-                        if(L_ref && !R_ref)
-                            edge_map_[edges[eL_idx]].subdivide = true;
-                        else if(R_ref && !L_ref)
-                            edge_map_[edges[eR_idx]].subdivide = true;
-                        else
-                            edge_map_[edges[eR_idx]].subdivide = true; // fallback estable
-                    }
-                    break;
-                }
+                        //~ if(L_ref && !R_ref)
+                            //~ edge_map_[edges[eL_idx]].subdivide = true;
+                        //~ else if(R_ref && !L_ref)
+                            //~ edge_map_[edges[eR_idx]].subdivide = true;
+                        //~ else
+                            //~ edge_map_[edges[eR_idx]].subdivide = true; // fallback estable
+                    //~ }
+                    //~ break;
+                //~ }
                 
                 case PAT_TWO_ADJ_LEFT:
                     edge_map_[edges[rot]].subdivide = true;
