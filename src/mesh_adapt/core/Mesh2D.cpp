@@ -8,8 +8,8 @@
 
 namespace mesh_adapt {
 
-int Mesh2D::add_node(double x, double y) {
-    nodes.emplace_back(x,y); //more efficent thgan nodes.push_back(Node2D(x, y));
+int Mesh2D::add_node(double x, double y, NodeFlag f) {
+    nodes.emplace_back(x,y,f); //more efficent thgan nodes.push_back(Node2D(x, y));
     return (int)nodes.size() - 1;
 }
 
