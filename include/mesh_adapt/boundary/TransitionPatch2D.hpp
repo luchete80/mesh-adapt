@@ -201,8 +201,9 @@ TransitionPatch2D build_transition_patch_from_band(
         // ==========================================
         // Usar project_corner_aware (obtiene TODAS las proyecciones)
         // ==========================================
-        std::vector<ProjectionResult> proj_results = contour.project_corner_aware(p);        
+        //std::vector<ProjectionResult> proj_results = contour.project_corner_aware(p);        
         //std::vector<ProjectionResult> proj_results = contour.project_corner_aware_xy(p);
+        std::vector<ProjectionResult> proj_results = contour.project_xy_dmax_ccw(p, 1.5*SL);
         
         if(proj_results.empty()) {
             std::cerr << "[WARNING] No se encontraron proyecciones para ring_gid=" << gid << "\n";
@@ -261,9 +262,10 @@ TransitionPatch2D build_transition_patch_from_band(
         
         double cos_angle = t_before.dot(t_after);
         cos_angle = std::max(-1.0, std::min(1.0, cos_angle));
-        double angle = std::acos(cos_angle) * 180.0 / 3.14159265358979323846;
+        //double angle = std::acos(cos_angle) * 180.0 / 3.14159265358979323846;
         
-        if(angle < 150.0) {
+        //if(angle < 150.0) {
+        if(cos_angle < 0.3) {
             VertexInfo vi;
             vi.point = curr;
             vi.tangent_before = t_before;
@@ -335,7 +337,25 @@ TransitionPatch2D build_transition_patch_from_band(
             filtered_projections.push_back(vertex_proj);
         }
     }
-    
+
+
+    int n_from_contour = 0;
+    int n_from_projection = 0;
+
+    for(const auto& p : filtered_projections) {
+        if(p.ring_gid == -1)
+            n_from_contour++;
+        else
+            n_from_projection++;
+    }
+
+    std::cout << "[STATS] puntos desde contour original = "
+              << n_from_contour << "\n";
+    std::cout << "[STATS] puntos desde proyección = "
+              << n_from_projection << "\n";
+    std::cout << "[STATS] total = "
+              << (n_from_contour + n_from_projection) << "\n";
+                  
     // --------------------------------------------------
     // PASO 6: Insertar en orden TOPOLÓGICO
     // --------------------------------------------------

@@ -280,66 +280,69 @@ std::vector<ProjectionResult> project_corner_aware(const Vec2& p) const
     return results;
 }
 
-std::vector<ProjectionResult> project_corner_aware_xy(const Vec2& p) const
+
+std::vector<ProjectionResult> project_xy_dmax_ccw(const Vec2& p, double dmax, bool contour_is_ccw = true) const
 {
     std::vector<ProjectionResult> results;
-    const double corner_thresh = 1e-6; // tolerancia para vértices
-    const double dup_thresh = 1e-12;   // para evitar duplicados exactos
+    if(dmax <= 0.0) return results;
 
-    auto push_if_new = [&](const ProjectionResult& pr){
-        for(const auto& existing : results)
-            if((existing.q - pr.q).norm() < dup_thresh) return;
-        results.push_back(pr);
-    };
+    const double dmax_sq = dmax * dmax;
+    const double eps = 1e-12;
 
-    // 1️⃣ Proyección sobre segmentos según tangente
     for(size_t i = 0; i + 1 < pts.size(); ++i)
     {
         Vec2 a = pts[i];
         Vec2 b = pts[i+1];
         Vec2 ab = b - a;
-        if(dot(ab, ab) < 1e-14) continue;
 
-        bool dominant_x = std::abs(ab.x) >= std::abs(ab.y);
+        if(dot(ab, ab) < eps) continue;
 
-        ProjectionResult pr;
-        pr.seg_id = static_cast<int>(i);
+        // Normal CCW
+        Vec2 normal(-ab.y, ab.x);
+        normal = normal.normalized();
+        if(!contour_is_ccw) normal = -normal;
 
-        if(dominant_x) {
-            pr.q.x = p.x;
-            pr.q.y = a.y + (p.x - a.x) * ab.y / ab.x;  // interpola en Y
-            pr.t = (p.x - a.x) / ab.x;
-        } else {
-            pr.q.y = p.y;
-            pr.q.x = a.x + (p.y - a.y) * ab.x / ab.y;  // interpola en X
-            pr.t = (p.y - a.y) / ab.y;
+        auto try_push = [&](double t, const Vec2& q)
+        {
+            if(t < 0.0 || t > 1.0) return;
+
+            double dx = q.x - p.x;
+            double dy = q.y - p.y;
+            if(dx*dx + dy*dy > dmax_sq) return;
+
+            for(const auto& e : results)
+                if((e.q - q).norm() < eps) return;
+
+            ProjectionResult pr;
+            pr.q = q;
+            pr.seg_id = (int)i;
+            pr.t = t;
+            //pr.normal = normal;
+            //pr.side = dot(p - q, normal);
+
+            results.push_back(pr);
+        };
+
+        // Proyección vertical (x = p.x)
+        if(std::abs(ab.x) > std::abs(ab.y) &&
+           (a.x - p.x)*(b.x - p.x) <= 0.0)
+        {
+            double t = (p.x - a.x) / ab.x;
+            Vec2 q;
+            q.x = p.x;
+            q.y = a.y + t * ab.y;
+            try_push(t, q);
         }
 
-        pr.t = std::clamp(pr.t, 0.0, 1.0);
-        push_if_new(pr);
-    }
-
-    // 2️⃣ Proyecciones sobre vértices (duplicar si es esquina)
-    for(size_t i = 0; i < pts.size(); ++i)
-    {
-        double d = (p - pts[i]).norm();
-        if(d > corner_thresh) continue;
-
-        // Segmento anterior
-        if(i > 0) {
-            ProjectionResult pr;
-            pr.q = pts[i];
-            pr.seg_id = static_cast<int>(i-1);
-            pr.t = 1.0;
-            push_if_new(pr);
-        }
-        // Segmento siguiente
-        if(i < pts.size() - 1) {
-            ProjectionResult pr;
-            pr.q = pts[i];
-            pr.seg_id = static_cast<int>(i);
-            pr.t = 0.0;
-            push_if_new(pr);
+        // Proyección horizontal (y = p.y)
+        if(std::abs(ab.y) >= std::abs(ab.x) &&
+           (a.y - p.y)*(b.y - p.y) <= 0.0)
+        {
+            double t = (p.y - a.y) / ab.y;
+            Vec2 q;
+            q.x = a.x + t * ab.x;
+            q.y = p.y;
+            try_push(t, q);
         }
     }
 

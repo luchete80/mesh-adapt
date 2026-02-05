@@ -103,6 +103,10 @@ struct Vec2 {
         double st = std::sin(theta);
         return {x * ct - y * st, x * st + y * ct};
     }
+    
+    Vec2 operator-() const {
+    return Vec2(-x, -y);
+    }
 };
 
 // Funciones inline de ayuda (ya existentes)
