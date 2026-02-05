@@ -172,8 +172,8 @@ public:
                     Edge& eR = edges[(rot+1)%4];
                     Edge& eL = edges[(rot+3)%4];
                     
-                    // if(is_initial_edge(e_initial))
-                    // {   
+                    if(is_initial_edge(e_initial))
+                    {   
 
                         std::cout << "SUBDIVISION"<< ") INITIAL edge=(" << e_initial.a << "," << e_initial.b<<")"<<std::endl;
                         if(edge_map_[eL].is_external && !edge_map_[eR].is_external)
@@ -186,7 +186,9 @@ public:
 
                         edge_map_[edges[rot]].subdivide = true;
                         edge_map_[edges[(rot+1)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
-                    // } else {
+
+                        initially_refined_.erase(e_initial);
+                    } else {
                         // ///IF BOUNDARY;TRY TO FORCE EXTERNAL NODES TO BE THE ADJACENT 
 
                         // // IF NOT ANY OTHER EDGE EDGE CHECK IF IS BOUNDARY QUAD TO FORCE THAT ADJ SIDE OT BE OUTER
@@ -208,7 +210,7 @@ public:
                         // // 3️⃣ Marcar la subdivisión
                         // edge_map_[*chosen_edge].subdivide = true;
 
-                    // }
+                    }
                     break;
                 }
                 
