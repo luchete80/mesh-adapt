@@ -133,6 +133,11 @@ public:
         auto it = edge_map_.find(opp);
         return (it != edge_map_.end() && it->second.subdivide);
     }
+
+    bool is_initial_edge(const Edge& e) const {
+        auto it = edge_map_.find(e);
+        return it != edge_map_.end() && has_cause(it->second, RefinementCause::INITIAL);
+    }
     
     //Marks edges from quad pattern
     void mark_edges_for_subdivision() {
@@ -153,6 +158,7 @@ public:
             // Mark edge map 
             switch(pat){
                 case PAT_ONE:
+                {
                     //OLD (DUMMY, ONLY ADJ_LEFT added)------------
                     //~ edge_map_[edges[rot]].subdivide = true;
                     //~ edge_map_[edges[(rot+1)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
@@ -162,79 +168,47 @@ public:
                     //edge_map_[edges[(rot+3)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
                     
                     //~ ////// NEW; CHECK THE INITIAL CONDITION
-                    {
-
+                    Edge& e_initial = edges[rot];
+                    Edge& eR = edges[(rot+1)%4];
+                    Edge& eL = edges[(rot+3)%4];
                     
-                        Edge& e_initial = edges[rot];
-                        Edge& eR = edges[(rot+1)%4];
-                        Edge& eL = edges[(rot+3)%4];
-
-                        bool L_ref = is_left_neighbor_refined(qid, rot) && initially_refined_.count(edges[(rot + 3) % 4]) == 0;
-                        bool R_ref = is_right_neighbor_refined(qid, rot) && initially_refined_.count(edges[(rot + 1) % 4]) == 0;
-
-                        
-                        if(initially_refined_.count(e_initial) > 0){
-                            edge_map_[edges[rot]].subdivide = true;
-                            edge_map_[edges[(rot+1)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
-                        //~ // Marcar adyacentes según criterio
+                    // if(is_initial_edge(e_initial))
+                    // {   
 
 
+                        if(edge_map_[eL].is_external && !edge_map_[eR].is_external)
+                            std::cout << "SUBDIVISION"<< ") INITIAL edge=(" << eL.a << "," << eL.b<<")"<<std::endl;
+                        else if(edge_map_[eR].is_external && !edge_map_[eL].is_external)
+                            std::cout << "SUBDIVISION"<< ") INITIAL edge=(" << eR.a << "," << eR.b<<")"<<std::endl;
+                        else if(edge_map_[eL].is_external && edge_map_[eR].is_external)
+                            std::cout << "SUBDIVISION L& R INTERNAL "<< std::endl;
 
-                        //~ Edge* chosen_edge = nullptr;
+                        //std::cout << "INITIAL SUBDIVISION"<< ") INITIAL edge=(" << e_initial.a << "," << e_initial.b<<")"<<std::endl;
+                        edge_map_[edges[rot]].subdivide = true;
+                        edge_map_[edges[(rot+1)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
+                    // } else {
+                        // ///IF BOUNDARY;TRY TO FORCE EXTERNAL NODES TO BE THE ADJACENT 
 
+                        // // IF NOT ANY OTHER EDGE EDGE CHECK IF IS BOUNDARY QUAD TO FORCE THAT ADJ SIDE OT BE OUTER
+                        // Edge* chosen_edge = nullptr;
 
-                        //~ if(edge_map_[eR].subdivide && !initially_refined_.count(eR))
-                                    //~ chosen_edge = &eR;
-                                //~ else if(edge_map_[eL].subdivide && !initially_refined_.count(eL))
-                                    //~ chosen_edge = &eL;
-                                //~ else
-                                    //~ chosen_edge = &eR; // fallback estable
-
-                                //~ edge_map_[*chosen_edge].subdivide = true;
-
-                                //~ // --- DEBUG MESSAGE ---
-                                //~ std::cout << "[DEBUG] Quad " << qid << " nodes=("
-                                          //~ << quad[0] << "," << quad[1] << "," << quad[2] << "," << quad[3]
-                                          //~ << ") INITIAL edge=(" << e_initial.a << "," << e_initial.b
-                                          //~ << ") -> marking adjacent edge=(" << chosen_edge->a << "," << chosen_edge->b << ")\n";
-
-
-
-                        //~ // Cambiar flag de INITIAL a USED
-                        //~ initially_refined_.erase(e_initial); // o marcar en edge_map_[e_initial] como USED
-                    } else {
-                        ///IF BOUNDARY;TRY TO FORCE EXTERNAL NODES TO BE THE ADJACENT 
-
-                        Edge* chosen_edge = nullptr;
-
-                        if(R_ref && !L_ref)
-                            chosen_edge = &edges[(rot + 3) % 4];
-                        else if(L_ref && !R_ref)
-                            chosen_edge = &edges[(rot + 1) % 4];
-                        else if(!L_ref && !R_ref)
-                            chosen_edge = &edges[(rot + 2) % 4]; // fallback estable
+                        // if(edge_map_[eL].is_external && !edge_map_[eR].is_external)
+                            // chosen_edge = &eL;
+                        // else if(edge_map_[eR].is_external && !edge_map_[eL].is_external)
+                            // chosen_edge = &eR;
+                        // else if(edge_map_[eL].is_external && edge_map_[eR].is_external)
+                            // chosen_edge = &eR; // fallback estable si ambos son externos
                             
-                        // IF NOT ANY OTHER EDGE EDGE CHECK IF IS BOUNDARY QUAD TO FORCE THAT ADJ SIDE OT BE OUTER
 
-                        edge_map_[*chosen_edge].subdivide = true;
+                        // if(!chosen_edge) {
+                          // chosen_edge = &eL;
 
-                        //~ if(edge_map_[eR].subdivide && !initially_refined_.count(eR))
-                                    //~ chosen_edge = &eR;
-                                //~ else if(edge_map_[eL].subdivide && !initially_refined_.count(eL))
-                                    //~ chosen_edge = &eL;
-                                //~ else
-                                    //~ chosen_edge = &eR; // fallback estable
+                        // }
 
-                                //~ edge_map_[*chosen_edge].subdivide = true;
+                        // // 3️⃣ Marcar la subdivisión
+                        // edge_map_[*chosen_edge].subdivide = true;
 
-                                //~ // --- DEBUG MESSAGE ---
-                                //~ std::cout << "[DEBUG] Quad " << qid << " nodes=("
-                                          //~ << quad[0] << "," << quad[1] << "," << quad[2] << "," << quad[3]
-                                          //~ << ") INITIAL edge=(" << e_initial.a << "," << e_initial.b
-                                          //~ << ") -> marking adjacent edge=(" << chosen_edge->a << "," << chosen_edge->b << ")\n";
-
-
-                    }
+                    // }
                     break;
                 }
                 

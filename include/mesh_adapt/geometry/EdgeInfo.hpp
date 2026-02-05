@@ -20,6 +20,7 @@ struct EdgeInfo
     std::vector<std::pair<int,int>> quad_refs; // (quad_id, local_edge_id)
     bool subdivide = false;         // marcado por refined points
     uint8_t cause_mask = 0;
+    bool is_external = false; // <-- nuevo flag
 
     EdgeInfo() = default;
     EdgeInfo(const Vec2& a, const Vec2& b) : p0(a), p1(b) {}

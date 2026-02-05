@@ -258,7 +258,16 @@ inline std::map<Edge, EdgeInfo> build_edge_map(const MeshToSub& mesh_to_sub) {
 
                 if(mesh_to_sub.subdivided_edges_global.count(e) > 0)
                     info.subdivide = true;
-                    
+
+                // Marcar si es un edge "externo" según nodos
+                if(nodes[i0].flag != NodeFlag::NODE_PROJECTED &&
+                   nodes[i0].flag != NodeFlag::NODE_CRITICAL &&
+                   nodes[i1].flag != NodeFlag::NODE_PROJECTED &&
+                   nodes[i1].flag != NodeFlag::NODE_CRITICAL)
+                {
+                    info.is_external = true;
+                }
+    
                 edge_map[e] = info;
             } else {
                 it->second.quad_refs.emplace_back(qid, i);
