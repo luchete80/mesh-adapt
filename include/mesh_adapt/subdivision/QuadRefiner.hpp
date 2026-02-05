@@ -207,6 +207,12 @@ inline int count_external_nodes(const Edge& e) const {
                         initially_refined_.erase(e);
                     } else {
 
+                        if(edge_map_[eL].is_external)
+                            edge_map_[eL].subdivide = true; 
+                        else if(edge_map_[eR].is_external)
+                            edge_map_[eR].subdivide = true; 
+                        
+                            
                         
                         // ///IF BOUNDARY;TRY TO FORCE EXTERNAL NODES TO BE THE ADJACENT 
 
