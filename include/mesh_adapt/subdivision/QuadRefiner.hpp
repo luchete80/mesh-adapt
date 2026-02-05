@@ -175,7 +175,7 @@ public:
                     // if(is_initial_edge(e_initial))
                     // {   
 
-
+                        std::cout << "SUBDIVISION"<< ") INITIAL edge=(" << e_initial.a << "," << e_initial.b<<")"<<std::endl;
                         if(edge_map_[eL].is_external && !edge_map_[eR].is_external)
                             std::cout << "SUBDIVISION"<< ") NB LEFT EXTERNAL =(" << eL.a << "," << eL.b<<")"<<std::endl;
                         else if(edge_map_[eR].is_external && !edge_map_[eL].is_external)
@@ -183,7 +183,7 @@ public:
                         else if(edge_map_[eL].is_external && edge_map_[eR].is_external)
                             std::cout << "SUBDIVISION L& R INTERNAL "<< std::endl;
 
-                        //std::cout << "INITIAL SUBDIVISION"<< ") INITIAL edge=(" << e_initial.a << "," << e_initial.b<<")"<<std::endl;
+
                         edge_map_[edges[rot]].subdivide = true;
                         edge_map_[edges[(rot+1)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
                     // } else {
