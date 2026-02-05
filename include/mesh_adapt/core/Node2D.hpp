@@ -12,19 +12,20 @@ enum NodeFlag {
     NODE_EXTERNAL = 4,
     NODE_SUBDIVIDED = 5,
     NODE_RING = 6,
-    NODE_CENTER = 7 //In the center of a quad
+    NODE_CENTER, = 7 //In the center of a quad
+    NODE_NONE = 8
 };
 
 
 struct Node2D {
     Vec2 x;
-    NodeFlag flag = NODE_INTERIOR;
+    NodeFlag flag = NODE_NONE;
     
     bool boundary = false;
     bool constrained = false;
 
     Node2D() = default;
-    Node2D(double X, double Y) : x(X,Y) {}
+    Node2D(double X, double Y, NodeFlag f = NODE_NONE) : x(X,Y),flag(f) {}
 
     // Suma de nodos
     Node2D operator+(const Node2D& other) const {
