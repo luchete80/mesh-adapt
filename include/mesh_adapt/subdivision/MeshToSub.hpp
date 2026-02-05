@@ -106,8 +106,9 @@ MeshToSub::MeshToSub(const Mesh2D& band_mesh, const TransitionPatch2D& patch) {
 
 int MeshToSub::add_projected_node(int lid, const TransitionPatch2D& patch) {
     const Vec2& p = patch.points[lid];
+    NodeFlag flag = patch.flags[lid];
     int new_id = static_cast<int>(mesh.nodes.size());
-    mesh.add_node(p.x, p.y);
+    mesh.add_node(p.x, p.y, flag);
     return new_id;
 }
 
