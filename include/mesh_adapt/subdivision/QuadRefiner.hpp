@@ -337,15 +337,22 @@ SubdivisionResult subdivide_quads_with_nodes(const std::vector<Node2D>& nodes) c
     return result;
 }
 
-//~ void add_refined_quads(const std::set<int>& qids,
-                                    //~ QuadPattern pat,
-                                    //~ RefinementCause cause)
-//~ {
-    //~ for(int q : qids) {
-        //~ quad_patterns_[q] = pat;
-        //~ quad_causes_[q]   = cause;
-    //~ }
-//~ }
+void add_refined_quads(const std::set<int>& qids,
+                       QuadPattern pat,
+                       RefinementCause cause)
+{
+    for(int qid : qids) {
+        // Marcar patrón del quad
+        quad_patterns_[qid] = pat;
+
+        // Propagar cause a los edges del quad
+        const auto& quad = quads_[qid];
+        for(int i=0;i<4;++i) {
+            Edge e(quad[i], quad[(i+1)%4]);
+            add_cause(edge_map_[e], cause);
+        }
+    }
+}
 
 
 };
