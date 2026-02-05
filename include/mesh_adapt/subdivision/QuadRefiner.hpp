@@ -200,7 +200,7 @@ public:
                         //~ // Cambiar flag de INITIAL a USED
                         //~ initially_refined_.erase(e_initial); // o marcar en edge_map_[e_initial] como USED
                     } else {
-
+                        ///IF BOUNDARY;TRY TO FORCE EXTERNAL NODES TO BE THE ADJACENT 
 
                         Edge* chosen_edge = nullptr;
 
@@ -210,6 +210,8 @@ public:
                             chosen_edge = &edges[(rot + 1) % 4];
                         else if(!L_ref && !R_ref)
                             chosen_edge = &edges[(rot + 2) % 4]; // fallback estable
+                            
+                        // IF NOT ANY OTHER EDGE EDGE CHECK IF IS BOUNDARY QUAD TO FORCE THAT ADJ SIDE OT BE OUTER
 
                         edge_map_[*chosen_edge].subdivide = true;
 
