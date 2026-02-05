@@ -51,8 +51,8 @@ struct Node2D {
     friend Node2D operator*(double s, const Node2D& n) {
         return n * s;  // reutiliza Node * double
     }
-   inline bool is_external() {
-    return flag == NODE_PROJECTED || f == NODE_CRITICAL;
+   inline bool is_external() const {
+    return flag == NODE_PROJECTED || flag == NODE_CRITICAL;
    }
     
 };
