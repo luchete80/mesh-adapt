@@ -208,8 +208,8 @@ public:
                             chosen_edge = &edges[(rot + 3) % 4];
                         else if(L_ref && !R_ref)
                             chosen_edge = &edges[(rot + 1) % 4];
-                        else
-                            chosen_edge = &edges[(rot + 1) % 4]; // fallback estable
+                        else if(!L_ref && !R_ref)
+                            chosen_edge = &edges[(rot + 2) % 4]; // fallback estable
 
                         edge_map_[*chosen_edge].subdivide = true;
 
