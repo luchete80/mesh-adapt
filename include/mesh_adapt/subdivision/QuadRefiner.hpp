@@ -20,12 +20,18 @@ public:
 
         
     void refine_to_conform(int max_iterations = 15) {
-        for(int it=0; it<max_iterations; ++it){
+        int prev_n_subdivide=0;
+        bool end = false;
+        int it = 0;
+        //for(int it=0; it<max_iterations; ++it){
+        while (!end){
             std::cout << "\n--- Iteration " << it << " ---\n";
 
             int n_subdivide = count_edges_to_subdivide();
             std::cout << "Edges marked for subdivision: " << n_subdivide << "\n";
-            if(n_subdivide == 0) break;
+            //if(n_subdivide == 0) break;
+            if(n_subdivide == prev_n_subdivide) end = true;
+            prev_n_subdivide = n_subdivide;
 
             classify_quads();
 
@@ -37,6 +43,7 @@ public:
 
             // Actualizar edge_map si es necesario
             update_edge_map();
+            it ++;
         }
     }
 
