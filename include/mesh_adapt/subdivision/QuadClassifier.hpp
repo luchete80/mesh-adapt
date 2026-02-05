@@ -9,7 +9,8 @@ namespace mesh_adapt {
 enum QuadPattern {
     PAT_NONE,
     PAT_ONE,
-    PAT_TWO_ADJ,
+    PAT_TWO_ADJ_LEFT,
+    PAT_TWO_ADJ_RIGHT,
     PAT_TWO_OPP,
     PAT_THREE,
     PAT_FULL
@@ -49,12 +50,23 @@ public:
             switch(n){
                 case 0: pat = PAT_NONE; rot=0; break;
                 case 1: pat = PAT_ONE; rot = refined_edges[0]; break;
+                //~ case 2:
+                    //~ if((refined_edges[1]-refined_edges[0]+4)%4==1)
+                        //~ { pat = PAT_TWO_ADJ_LEFT; rot = refined_edges[0]; }
+                    //~ else
+                        //~ { pat = PAT_TWO_OPP; rot = refined_edges[0]; }
+                    //~ break;
                 case 2:
-                    if((refined_edges[1]-refined_edges[0]+4)%4==1)
-                        { pat = PAT_TWO_ADJ; rot = refined_edges[0]; }
+                {
+                    int diff = (refined_edges[1]-refined_edges[0]+4)%4;
+                    if(diff == 1)
+                        { pat = PAT_TWO_ADJ_LEFT; rot = refined_edges[0]; }
+                    else if(diff == 3) // equivalente a -1 mod 4
+                        { pat = PAT_TWO_ADJ_RIGHT; rot = refined_edges[1]; } 
                     else
                         { pat = PAT_TWO_OPP; rot = refined_edges[0]; }
                     break;
+                }
                 case 3: pat = PAT_THREE; rot = 0; break;
                 case 4: pat = PAT_FULL; rot = 0; break;
             }

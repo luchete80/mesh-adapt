@@ -32,3 +32,9 @@ Create new Mesh2D inside_mesh = filter_nodes_inside_contour(mesh_bg, cone_contou
 Mesh2D band_mesh = remove_nodes_near_contour(inside_mesh, cone_contour, SL);
 
 Mesh2Sub unify, temporarily, BandMesh & TransitionPatch MERGED quad (not all of them, fallback quads are not included, are used to mark edges to subdivide), 
+
+
+Subdivision
+
+
+Inside MeshToSub from patch.subdivided_edge_to_node is created the map subdivided_edge_to_global

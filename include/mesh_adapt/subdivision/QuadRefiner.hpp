@@ -8,14 +8,29 @@ namespace mesh_adapt {
 
 class QuadRefiner {
 public:
+
+    std::vector<Quad>& quads_;
+    std::map<Edge, EdgeInfo>& edge_map_;
+    
+    std::vector<QuadPattern> quad_patterns_;
+    std::vector<int> quad_rotations_;
+    std::map<Edge,int> initially_refined_; // edges del patch -> nodo ya creado
+    
+    
+    
     QuadRefiner(std::vector<Quad>& quads,
                 std::map<Edge, EdgeInfo>& edge_map,
                 const std::map<Edge,int>& initially_refined = {})
         : quads_(quads), edge_map_(edge_map), initially_refined_(initially_refined) {
           
           for(const auto& kv : initially_refined_) {
-    std::cout << "Init edge: (" << kv.first.a << "," << kv.first.b << ") -> " << kv.second << "\n";
-}
+    auto& ei = edge_map_[kv.first];
+    add_cause(ei, RefinementCause::INITIAL);
+    }
+
+          for(const auto& kv : initially_refined_) {
+          std::cout << "Init edge: (" << kv.first.a << "," << kv.first.b << ") -> " << kv.second << "\n";
+        }
 }
 
         
@@ -57,15 +72,6 @@ public:
         }
     }
 
-//private:
-    std::vector<Quad>& quads_;
-    std::map<Edge, EdgeInfo>& edge_map_;
-    
-    std::vector<QuadPattern> quad_patterns_;
-    std::vector<int> quad_rotations_;
-    //std::set<Edge> initially_refined_; // edges que ya tienen nodos
-    std::map<Edge,int> initially_refined_; // edges del patch -> nodo ya creado
-    
 
     int get_max_node_index() const {
         int max_idx = -1;
@@ -87,6 +93,31 @@ public:
         qc.classify(quad_patterns_, quad_rotations_);
     }
 
+    bool neighbor_is_refined(const Edge& e) const
+    {
+        auto it = edge_map_.find(e);
+        if(it == edge_map_.end()) return false;
+
+        for(const auto& [qid, local_e] : it->second.quad_refs)
+            if(quad_patterns_[qid] != PAT_NONE)
+                return true;
+
+        return false;
+    }
+
+    bool is_opposite_refined(size_t qid, int rot) const
+    {
+        const auto& quad = quads_[qid];
+        Edge opp(
+            quad[(rot+2)%4],
+            quad[(rot+3)%4]
+        );
+
+        auto it = edge_map_.find(opp);
+        return (it != edge_map_.end() && it->second.subdivide);
+    }
+    
+    //Marks edges from quad pattern
     void mark_edges_for_subdivision() {
         for(size_t qid=0; qid<quads_.size(); ++qid){
             auto& quad = quads_[qid];
@@ -102,15 +133,39 @@ public:
                 Edge(quad[3], quad[0])
             };
 
-            // Marcar edges según patrón (similar a tu código Python)
+            // Mark edge map 
             switch(pat){
                 case PAT_ONE:
+                    //OLD------------
+                    //edge_map_[edges[rot]].subdivide = true;
+                    //edge_map_[edges[(rot+1)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
+                    //edge_map_[edges[(rot+2)%4]].subdivide = true; //OPPOSITE
+                    //edge_map_[edges[(rot+3)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
+                    //break;
+                    //--------------
+                {
+                    int e0 = rot;
+                    int eL = (rot + 3) % 4;
+                    int eR = (rot + 1) % 4;
+
+                    bool L_ref = neighbor_is_refined(edges[eL]);
+                    bool R_ref = neighbor_is_refined(edges[eR]);
+
+                    if(L_ref && !R_ref)
+                        edge_map_[edges[eL]].subdivide = true;
+                    else if(R_ref && !L_ref)
+                        edge_map_[edges[eR]].subdivide = true;
+                    else
+                        edge_map_[edges[eR]].subdivide = true; // fallback estable
+                    break;
+                }
+                case PAT_TWO_ADJ_LEFT:
                     edge_map_[edges[rot]].subdivide = true;
                     edge_map_[edges[(rot+1)%4]].subdivide = true;
                     break;
-                case PAT_TWO_ADJ:
+                case PAT_TWO_ADJ_RIGHT:
                     edge_map_[edges[rot]].subdivide = true;
-                    edge_map_[edges[(rot+1)%4]].subdivide = true;
+                    edge_map_[edges[(rot+3)%4]].subdivide = true;
                     break;
                 case PAT_TWO_OPP:
                     edge_map_[edges[rot]].subdivide = true;
@@ -200,7 +255,7 @@ SubdivisionResult subdivide_quads_with_nodes(const std::vector<Node2D>& nodes) c
             result.new_quads.push_back({a, m_ab, m_cd, d});
             result.new_quads.push_back({m_ab, b, c, m_cd});
         }
-        else if(pat == PAT_TWO_ADJ) {
+        else if(pat == PAT_TWO_ADJ_LEFT) {
             std::array<int,4> q;
             for(int i=0;i<4;++i) q[i] = quad[(i + rot)%4];
             int a=q[0], b=q[1], c=q[2], d=q[3];
@@ -212,6 +267,19 @@ SubdivisionResult subdivide_quads_with_nodes(const std::vector<Node2D>& nodes) c
             result.new_quads.push_back({a, m_ab, cc, d});
             result.new_quads.push_back({m_ab, b, m_bc, cc});
             result.new_quads.push_back({d, cc, m_bc, c});
+        }
+        else if(pat == PAT_TWO_ADJ_RIGHT) {
+            std::array<int,4> q;
+            for(int i=0;i<4;++i) q[i] = quad[(i + rot)%4];
+            int a=q[0], b=q[1], c=q[2], d=q[3];
+
+            int m_ab = get_edge_midpoint(a,b);
+            int m_da = get_edge_midpoint(d,a);
+            int cc   = get_quad_center();
+
+            result.new_quads.push_back({a, m_ab, cc, m_da});
+            result.new_quads.push_back({m_ab, b, c, cc});
+            result.new_quads.push_back({m_da, cc, c, d});
         }
         else if(pat == PAT_THREE || pat == PAT_FULL) {
             int m01 = get_edge_midpoint(i0,i1);
@@ -232,6 +300,16 @@ SubdivisionResult subdivide_quads_with_nodes(const std::vector<Node2D>& nodes) c
 
     return result;
 }
+
+//~ void add_refined_quads(const std::set<int>& qids,
+                                    //~ QuadPattern pat,
+                                    //~ RefinementCause cause)
+//~ {
+    //~ for(int q : qids) {
+        //~ quad_patterns_[q] = pat;
+        //~ quad_causes_[q]   = cause;
+    //~ }
+//~ }
 
 
 };
