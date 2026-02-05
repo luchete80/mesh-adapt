@@ -2,6 +2,7 @@
 #include "mesh_adapt/geometry/Edge.hpp"
 #include "QuadClassifier.hpp"
 #include "SubdivisionResult.hpp"
+#include "MeshToSub.hpp"
 
 namespace mesh_adapt {
 
@@ -15,13 +16,15 @@ public:
     std::vector<QuadPattern> quad_patterns_;
     std::vector<int> quad_rotations_;
     std::map<Edge,int> initially_refined_; // edges del patch -> nodo ya creado
+
+    MeshToSub& meshsub;  // referencia a toda la estructura
     
     
     
-    QuadRefiner(std::vector<Quad>& quads,
+    QuadRefiner(MeshToSub& meshsub_, std::vector<Quad>& quads,
                 std::map<Edge, EdgeInfo>& edge_map,
                 const std::map<Edge,int>& initially_refined = {})
-        : quads_(quads), edge_map_(edge_map), initially_refined_(initially_refined) {
+        : meshsub(meshsub_), quads_(quads), edge_map_(edge_map), initially_refined_(initially_refined) {
           
           for(const auto& kv : initially_refined_) {
     auto& ei = edge_map_[kv.first];
