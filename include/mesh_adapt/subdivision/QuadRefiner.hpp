@@ -177,9 +177,9 @@ public:
 
 
                         if(edge_map_[eL].is_external && !edge_map_[eR].is_external)
-                            std::cout << "SUBDIVISION"<< ") INITIAL edge=(" << eL.a << "," << eL.b<<")"<<std::endl;
+                            std::cout << "SUBDIVISION"<< ") NB LEFT EXTERNAL =(" << eL.a << "," << eL.b<<")"<<std::endl;
                         else if(edge_map_[eR].is_external && !edge_map_[eL].is_external)
-                            std::cout << "SUBDIVISION"<< ") INITIAL edge=(" << eR.a << "," << eR.b<<")"<<std::endl;
+                            std::cout << "SUBDIVISION"<< ") NB RIGHT EXTERNAL =(" << eR.a << "," << eR.b<<")"<<std::endl;
                         else if(edge_map_[eL].is_external && edge_map_[eR].is_external)
                             std::cout << "SUBDIVISION L& R INTERNAL "<< std::endl;
 
