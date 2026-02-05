@@ -34,12 +34,12 @@ public:
 }
 
         
-    void refine_to_conform(int max_iterations = 15) {
+    void refine_to_conform(int max_iterations = 2) {
         int prev_n_subdivide=0;
         bool end = false;
         int it = 0;
-        //for(int it=0; it<max_iterations; ++it){
-        while (!end){
+        for(int it=0; it<2; ){ //// ONLY FOR DEBUG
+        //while (!end){
             std::cout << "\n--- Iteration " << it << " ---\n";
 
             int n_subdivide = count_edges_to_subdivide();
@@ -136,29 +136,71 @@ public:
             // Mark edge map 
             switch(pat){
                 case PAT_ONE:
-                    //OLD------------
-                    //edge_map_[edges[rot]].subdivide = true;
-                    //edge_map_[edges[(rot+1)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
+                    //OLD (DUMMY, ONLY ADJ_LEFT added)------------
+                    edge_map_[edges[rot]].subdivide = true;
+                    edge_map_[edges[(rot+1)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
+                    break;
+                    //-------------- ANOTHER OPTIONS
                     //edge_map_[edges[(rot+2)%4]].subdivide = true; //OPPOSITE
                     //edge_map_[edges[(rot+3)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
-                    //break;
-                    //--------------
-                {
-                    int e0 = rot;
-                    int eL = (rot + 3) % 4;
-                    int eR = (rot + 1) % 4;
+                    
+                    //~ ////// NEW; CHECK THE INITIAL CONDITION
+                    //~ {
+                    //~ Edge& e_initial = edges[rot];
 
-                    bool L_ref = neighbor_is_refined(edges[eL]);
-                    bool R_ref = neighbor_is_refined(edges[eR]);
+                    //~ if(initially_refined_.count(e_initial) > 0){
+                        //~ // Marcar adyacentes según criterio
+                        //~ Edge& eR = edges[(rot+1)%4];
+                        //~ Edge& eL = edges[(rot+3)%4];
 
-                    if(L_ref && !R_ref)
-                        edge_map_[edges[eL]].subdivide = true;
-                    else if(R_ref && !L_ref)
-                        edge_map_[edges[eR]].subdivide = true;
-                    else
-                        edge_map_[edges[eR]].subdivide = true; // fallback estable
+                        if(edge_map_[eR].subdivide && !initially_refined_.count(eR))
+                            edge_map_[eR].subdivide = true;
+                        else if(edge_map_[eL].subdivide && !initially_refined_.count(eL))
+                            edge_map_[eL].subdivide = true;
+                        else
+                            edge_map_[eR].subdivide = true; // fallback estable
+
+                        //~ Edge* chosen_edge = nullptr;
+
+
+                        //~ if(edge_map_[eR].subdivide && !initially_refined_.count(eR))
+                                    //~ chosen_edge = &eR;
+                                //~ else if(edge_map_[eL].subdivide && !initially_refined_.count(eL))
+                                    //~ chosen_edge = &eL;
+                                //~ else
+                                    //~ chosen_edge = &eR; // fallback estable
+
+                                //~ edge_map_[*chosen_edge].subdivide = true;
+
+                                //~ // --- DEBUG MESSAGE ---
+                                //~ std::cout << "[DEBUG] Quad " << qid << " nodes=("
+                                          //~ << quad[0] << "," << quad[1] << "," << quad[2] << "," << quad[3]
+                                          //~ << ") INITIAL edge=(" << e_initial.a << "," << e_initial.b
+                                          //~ << ") -> marking adjacent edge=(" << chosen_edge->a << "," << chosen_edge->b << ")\n";
+
+
+
+                        //~ // Cambiar flag de INITIAL a USED
+                        //~ initially_refined_.erase(e_initial); // o marcar en edge_map_[e_initial] como USED
+                    //~ }
+                    else {
+                        // lógica normal de vecinos
+                        int eL_idx = (rot + 3) % 4;
+                        int eR_idx = (rot + 1) % 4;
+
+                        bool L_ref = neighbor_is_refined(edges[eL_idx]);
+                        bool R_ref = neighbor_is_refined(edges[eR_idx]);
+
+                        if(L_ref && !R_ref)
+                            edge_map_[edges[eL_idx]].subdivide = true;
+                        else if(R_ref && !L_ref)
+                            edge_map_[edges[eR_idx]].subdivide = true;
+                        else
+                            edge_map_[edges[eR_idx]].subdivide = true; // fallback estable
+                    }
                     break;
                 }
+                
                 case PAT_TWO_ADJ_LEFT:
                     edge_map_[edges[rot]].subdivide = true;
                     edge_map_[edges[(rot+1)%4]].subdivide = true;

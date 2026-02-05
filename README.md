@@ -36,5 +36,23 @@ Mesh2Sub unify, temporarily, BandMesh & TransitionPatch MERGED quad (not all of 
 
 Subdivision
 
-
 Inside MeshToSub from patch.subdivided_edge_to_node is created the map subdivided_edge_to_global
+
+Inside QuadRefiner
+  edge_map_ is buit from meshtosub.subdivided_edge_to_global,
+  initial refined edges (probably from fallback_quads) are mark with INITIAL cause flag 
+
+  Then, in refine_to_conform()
+   quad_patter is built from qad with classify() (which calls QuadClassifier)
+
+      void classify_quads() {
+          QuadClassifier qc(quads_, edge_map_);
+          qc.classify(quad_patterns_, quad_rotations_);
+      }
+
+
+Initial edges are from fallback tris, which have 1 side external. 
+is convenient to mark as refined the neighbour edge which has one internal one in 
+order confine subdivision
+
+
