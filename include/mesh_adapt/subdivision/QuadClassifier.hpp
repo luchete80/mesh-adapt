@@ -85,39 +85,69 @@ private:
 
 
 
-QuadPattern classify_quad(
+inline void classify_quad(
     const Quad& q,
-    const EdgeState edge_state[4] // por ej: NONE / SUBDIVIDED / BOUNDARY
-) {
-    bool refined[4];
-    int count = 0;
+    const std::map<Edge, EdgeInfo>& edge_map,
+    QuadPattern& pat,
+    int& rot
+)
+{
+    std::array<bool,4> edge_sub = {false,false,false,false};
 
-    for (int i = 0; i < 4; ++i) {
-        refined[i] = (edge_state[i] == SUBDIVIDED);
-        if (refined[i]) count++;
+    for(int i = 0; i < 4; ++i)
+    {
+        Edge e(q[i], q[(i+1)%4]);
+        auto it = edge_map.find(e);
+        edge_sub[i] = (it != edge_map.end()) ? it->second.subdivide : false;
     }
 
-    switch (count) {
-    case 0:
-        return PAT_NONE;
+    std::vector<int> refined;
+    for(int i = 0; i < 4; ++i)
+        if(edge_sub[i]) refined.push_back(i);
 
-    case 1:
-        return PAT_ONE;
+    switch(refined.size())
+    {
+        case 0:
+            pat = PAT_NONE;
+            rot = 0;
+            break;
 
-    case 2:
-        // adyacentes o opuestas
-        if (refined[0] && refined[2]) return PAT_TWO_OPP;
-        if (refined[1] && refined[3]) return PAT_TWO_OPP;
-        return PAT_TWO_ADJ;
+        case 1:
+            pat = PAT_ONE;
+            rot = refined[0];
+            break;
 
-    case 3:
-        return PAT_THREE;
+        case 2:
+        {
+            int diff = (refined[1] - refined[0] + 4) % 4;
+            if(diff == 1)
+            {
+                pat = PAT_TWO_ADJ_LEFT;
+                rot = refined[0];
+            }
+            else if(diff == 3)
+            {
+                pat = PAT_TWO_ADJ_RIGHT;
+                rot = refined[1];
+            }
+            else
+            {
+                pat = PAT_TWO_OPP;
+                rot = refined[0];
+            }
+            break;
+        }
 
-    case 4:
-        return PAT_FULL;
+        case 3:
+            pat = PAT_THREE;
+            rot = 0;
+            break;
+
+        case 4:
+            pat = PAT_FULL;
+            rot = 0;
+            break;
     }
-
-    return PAT_NONE;
 }
 
 }
