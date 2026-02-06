@@ -183,8 +183,8 @@ void mark_edges_for_subdivision()
             Edge& e = edges[rot];
 
             // vecinos
-            Edge& eL = edges[(rot + 3) % 4];
-            Edge& eR = edges[(rot + 1) % 4];
+            Edge& eL = edges[(rot + 1) % 4];
+            Edge& eR = edges[(rot + 3) % 4];
 
             // política simple (ejemplo)
             if(edge_map_[eL].is_external && !edge_map_[eR].is_external)
