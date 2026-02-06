@@ -1,4 +1,3 @@
-
 #pragma once
 #include "mesh_adapt/geometry/Edge.hpp"
 #include "QuadClassifier.hpp"
@@ -52,16 +51,16 @@ public:
             if(n_subdivide == prev_n_subdivide) end = true;
             prev_n_subdivide = n_subdivide;
 
-            //classify_quads();
+            classify_quads();
 
             // Marcar edges según patrones
             mark_edges_for_subdivision();
 
             // Subdividir quads
-            //subdivide_quads();
+            subdivide_quads();
 
             // Actualizar edge_map si es necesario
-            //update_edge_map();
+            update_edge_map();
             it ++;
         }
     }
@@ -146,62 +145,123 @@ inline bool is_external_node(int nid) const {
 inline int count_external_nodes(const Edge& e) const {
     return is_external_node(e.a) + is_external_node(e.b);
 }
+    
+    //Marks edges from quad pattern
+    void mark_edges_for_subdivision() {
+        for(size_t qid=0; qid<quads_.size(); ++qid){
+            auto& quad = quads_[qid];
+            int rot = quad_rotations_[qid];
+            QuadPattern pat = quad_patterns_[qid];
 
-void mark_edges_for_subdivision()
-{
-    for(size_t qid = 0; qid < quads_.size(); ++qid)
-    {
-        QuadPattern pat;
-        int rot;
 
-        classify_quad(quads_[qid], edge_map_, pat, rot);
+            // Inicializar los 4 edges del quad directamente
+            std::array<Edge,4> edges = {
+                Edge(quad[0], quad[1]),
+                Edge(quad[1], quad[2]),
+                Edge(quad[2], quad[3]),
+                Edge(quad[3], quad[0])
+            };
 
-        // cache opcional
-        quad_patterns_[qid]  = pat;
-        quad_rotations_[qid] = rot;
-
-        if(pat != PAT_ONE && pat != PAT_THREE)
-            continue;
-
-        auto& quad = quads_[qid];
-
-        std::array<Edge,4> edges = {
-            Edge(quad[0], quad[1]),
-            Edge(quad[1], quad[2]),
-            Edge(quad[2], quad[3]),
-            Edge(quad[3], quad[0])
-        };
-
-        if(pat == PAT_ONE)
-        {
-            // edge refinado
-            Edge& e = edges[rot];
-
-            // vecinos
-            Edge& eL = edges[(rot + 3) % 4];
-            Edge& eR = edges[(rot + 1) % 4];
-
-            // política simple (ejemplo)
-            if(edge_map_[eL].is_external && !edge_map_[eR].is_external)
-                edge_map_[eL].subdivide = true;
-            else
-                edge_map_[eR].subdivide = true;
-        }
-        else if(pat == PAT_THREE)
-        {
-            // el único no refinado
-            for(int i = 0; i < 4; ++i)
-            {
-                if(!edge_map_[edges[i]].subdivide)
+            // Mark edge map 
+            switch(pat){
+                case PAT_ONE:
                 {
-                    edge_map_[edges[i]].subdivide = true;
+                    //OLD (DUMMY, ONLY ADJ_LEFT added)------------
+                    //~ edge_map_[edges[rot]].subdivide = true;
+                    //~ edge_map_[edges[(rot+1)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
+                    //~ break;
+                    //-------------- ANOTHER OPTIONS
+                    //edge_map_[edges[(rot+2)%4]].subdivide = true; //OPPOSITE
+                    //edge_map_[edges[(rot+3)%4]].subdivide = true; //THERE IS NOT ONLY ONE 
+                    
+                    //~ ////// NEW; CHECK THE INITIAL CONDITION
+                    Edge& e = edges[rot];
+                    Edge& eR = edges[(rot+3)%4];
+                    Edge& eL = edges[(rot+1)%4];
+
+                    const Node2D& n0 = meshsub.mesh.nodes[e.a];
+                    const Node2D& n1 = meshsub.mesh.nodes[e.b];
+                    
+                    if(is_initial_edge(e))
+                    {   
+
+                        std::cout << "SUBDIVISION"<< ") INITIAL edge=(" << e.a << "," << e.b<<")"<<std::endl;
+                        if(edge_map_[eL].is_external && !edge_map_[eR].is_external)
+                            std::cout << "SUBDIVISION"<< ") NB LEFT EXTERNAL =(" << eL.a << "," << eL.b<<")"<<std::endl;
+                        else if(edge_map_[eR].is_external && !edge_map_[eL].is_external)
+                            std::cout << "SUBDIVISION"<< ") NB RIGHT EXTERNAL =(" << eR.a << "," << eR.b<<")"<<std::endl;
+                        else if(edge_map_[eL].is_external && edge_map_[eR].is_external)
+                            std::cout << "SUBDIVISION L& R INTERNAL "<< std::endl;
+
+                        //if(!edge_map_[eL].is_external){
+                        if(count_external_nodes(e)==1){
+                           if(n0.is_external())
+                               edge_map_[eL].subdivide = true; 
+                            else
+                               edge_map_[eR].subdivide = true;    
+                        }
+
+
+                        
+
+                        initially_refined_.erase(e);
+                    } else {
+
+                        if(edge_map_[eL].is_external)
+                            edge_map_[eL].subdivide = true; 
+                        else if(edge_map_[eR].is_external)
+                            edge_map_[eR].subdivide = true; 
+                        else {
+                        // fallback geométrico o rotacional
+                             edge_map_[eL].subdivide = true;
+                        }
+                            
+                        
+                        // ///IF BOUNDARY;TRY TO FORCE EXTERNAL NODES TO BE THE ADJACENT 
+
+                        // // IF NOT ANY OTHER EDGE EDGE CHECK IF IS BOUNDARY QUAD TO FORCE THAT ADJ SIDE OT BE OUTER
+                        // Edge* chosen_edge = nullptr;
+
+                        // if(edge_map_[eL].is_external && !edge_map_[eR].is_external)
+                            // chosen_edge = &eL;
+                        // else if(edge_map_[eR].is_external && !edge_map_[eL].is_external)
+                            // chosen_edge = &eR;
+                        // else if(edge_map_[eL].is_external && edge_map_[eR].is_external)
+                            // chosen_edge = &eR; // fallback estable si ambos son externos
+                            
+
+                        // if(!chosen_edge) {
+                          // chosen_edge = &eL;
+
+                        // }
+
+                        // // 3️⃣ Marcar la subdivisión
+                        // edge_map_[*chosen_edge].subdivide = true;
+
+                    }
                     break;
                 }
+                
+                case PAT_TWO_ADJ_LEFT:
+                    edge_map_[edges[rot]].subdivide = true;
+                    edge_map_[edges[(rot+1)%4]].subdivide = true;
+                    break;
+                case PAT_TWO_ADJ_RIGHT:
+                    edge_map_[edges[rot]].subdivide = true;
+                    edge_map_[edges[(rot+3)%4]].subdivide = true;
+                    break;
+                case PAT_TWO_OPP:
+                    edge_map_[edges[rot]].subdivide = true;
+                    edge_map_[edges[(rot+2)%4]].subdivide = true;
+                    break;
+                case PAT_THREE:
+                case PAT_FULL:
+                    for(int i=0;i<4;++i) edge_map_[edges[i]].subdivide = true;
+                    break;
+                default: break;
             }
         }
     }
-}
-    
 
     void subdivide_quads() {
         // Aquí implementas la subdivisión real de quads y actualización de quads_
