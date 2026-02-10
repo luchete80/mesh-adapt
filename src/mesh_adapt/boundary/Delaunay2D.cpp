@@ -1,6 +1,8 @@
 #include "mesh_adapt/boundary/Delaunay2D.hpp"
 #include <algorithm>
 #include <cmath>
+#include <map>
+#include <utility>
 
 namespace mesh_adapt {
 
@@ -47,6 +49,12 @@ void Delaunay2D::build_from_two_polylines(
     add_constraints_from_loop(inner_ids);
 }
 
+inline double orient2d(const Vec2& a, const Vec2& b, const Vec2& c)
+{
+    return (b.x - a.x)*(c.y - a.y)
+         - (b.y - a.y)*(c.x - a.x);
+}
+
 
 //==============================================================
 // Add constraint edges for a closed loop
@@ -65,14 +73,41 @@ void Delaunay2D::add_constraints_from_loop(
     }
 }
 
+///// OLD
 
-//==============================================================
-// Circumcircle test (Bowyer-Watson)
-//==============================================================
+//~ //==============================================================
+//~ // Circumcircle test (Bowyer-Watson)
+//~ //==============================================================
+//~ bool Delaunay2D::circumcircle_contains(
+    //~ const std::array<int,3>& tri,
+    //~ const Vec2& p
+//~ ) const {
+    //~ const Vec2& a = points[tri[0]];
+    //~ const Vec2& b = points[tri[1]];
+    //~ const Vec2& c = points[tri[2]];
+
+    //~ double ax = a.x - p.x;
+    //~ double ay = a.y - p.y;
+    //~ double bx = b.x - p.x;
+    //~ double by = b.y - p.y;
+    //~ double cx = c.x - p.x;
+    //~ double cy = c.y - p.y;
+
+    //~ double det =
+        //~ (ax*ax + ay*ay) * (bx*cy - cx*by)
+      //~ - (bx*bx + by*by) * (ax*cy - cx*ay)
+      //~ + (cx*cx + cy*cy) * (ax*by - bx*ay);
+
+    //~ return det > 0;
+//~ }
+
+
+
 bool Delaunay2D::circumcircle_contains(
     const std::array<int,3>& tri,
     const Vec2& p
-) const {
+) const
+{
     const Vec2& a = points[tri[0]];
     const Vec2& b = points[tri[1]];
     const Vec2& c = points[tri[2]];
@@ -89,7 +124,8 @@ bool Delaunay2D::circumcircle_contains(
       - (bx*bx + by*by) * (ax*cy - cx*ay)
       + (cx*cx + cy*cy) * (ax*by - bx*ay);
 
-    return det > 0;
+    double o = orient2d(a,b,c);
+    return (o > 0) ? (det > 0) : (det < 0);
 }
 
 
@@ -105,17 +141,145 @@ bool Delaunay2D::edges_equal(
 }
 
 
-//==============================================================
-// Bowyer-Watson triangulation using ONLY boundary points
-//==============================================================
+//~ //==============================================================
+//~ // Bowyer-Watson triangulation using ONLY boundary points
+//~ //==============================================================
+//~ void Delaunay2D::triangulate()
+//~ {
+    //~ triangles.clear();
+    //~ if(points.size() < 3) return;
+
+    //~ //----------------------------------------------------------
+    //~ // Step 1: Super triangle
+    //~ //----------------------------------------------------------
+    //~ double minX=points[0].x, minY=points[0].y;
+    //~ double maxX=points[0].x, maxY=points[0].y;
+
+    //~ for(const auto& p : points){
+        //~ minX = std::min(minX,p.x);
+        //~ minY = std::min(minY,p.y);
+        //~ maxX = std::max(maxX,p.x);
+        //~ maxY = std::max(maxY,p.y);
+    //~ }
+
+    //~ double dx = maxX-minX;
+    //~ double dy = maxY-minY;
+    //~ double delta = std::max(dx,dy);
+
+    //~ Vec2 p1(minX-10*delta, minY-10*delta);
+    //~ Vec2 p2(maxX+10*delta, minY-10*delta);
+    //~ Vec2 p3((minX+maxX)/2.0, maxY+10*delta);
+
+    //~ int i1 = (int)points.size();
+    //~ int i2 = i1+1;
+    //~ int i3 = i1+2;
+
+    //~ points.push_back(p1);
+    //~ points.push_back(p2);
+    //~ points.push_back(p3);
+
+    //~ triangles.push_back({i1,i2,i3});
+
+    //~ //----------------------------------------------------------
+    //~ // Step 2: Insert points incrementally
+    //~ //----------------------------------------------------------
+    //~ int real_points = (int)points.size()-3;
+
+    //~ for(int i=0; i<real_points; ++i){
+
+        //~ std::vector<std::array<int,3>> bad;
+
+        //~ for(auto& t : triangles){
+            //~ if(circumcircle_contains(t, points[i]))
+                //~ bad.push_back(t);
+        //~ }
+
+        //~ //------------------------------------------------------
+        //~ // Find polygon cavity boundary
+        //~ //------------------------------------------------------
+        //~ std::vector<Edge2D> polygon;
+
+        //~ for(auto& t : bad){
+
+            //~ Edge2D edges[3] = {
+                //~ Edge2D(t[0],t[1]),
+                //~ Edge2D(t[1],t[2]),
+                //~ Edge2D(t[2],t[0])
+            //~ };
+
+            //~ for(auto& e : edges){
+
+                //~ bool shared=false;
+
+                //~ for(auto& ot : bad){
+                    //~ if(t==ot) continue;
+
+                    //~ Edge2D oe[3] = {
+                        //~ Edge2D(ot[0],ot[1]),
+                        //~ Edge2D(ot[1],ot[2]),
+                        //~ Edge2D(ot[2],ot[0])
+                    //~ };
+
+                    //~ if(edges_equal(e,oe[0]) ||
+                       //~ edges_equal(e,oe[1]) ||
+                       //~ edges_equal(e,oe[2])){
+                        //~ shared=true;
+                        //~ break;
+                    //~ }
+                //~ }
+
+                //~ if(!shared)
+                    //~ polygon.push_back(e);
+            //~ }
+        //~ }
+
+        //~ //------------------------------------------------------
+        //~ // Remove bad triangles
+        //~ //------------------------------------------------------
+        //~ triangles.erase(
+            //~ std::remove_if(triangles.begin(), triangles.end(),
+            //~ [&](const std::array<int,3>& t){
+                //~ return std::find(bad.begin(),bad.end(),t)!=bad.end();
+            //~ }),
+            //~ triangles.end()
+        //~ );
+
+        //~ //------------------------------------------------------
+        //~ // Retriangulate cavity
+        //~ //------------------------------------------------------
+        //~ for(auto& e : polygon){
+            //~ triangles.push_back({e.a,e.b,i});
+        //~ }
+    //~ }
+
+    //~ //----------------------------------------------------------
+    //~ // Step 3: Remove super triangle triangles
+    //~ //----------------------------------------------------------
+    //~ int N = (int)points.size();
+
+    //~ triangles.erase(
+        //~ std::remove_if(triangles.begin(), triangles.end(),
+        //~ [&](const std::array<int,3>& t){
+            //~ return (t[0]>=N-3 || t[1]>=N-3 || t[2]>=N-3);
+        //~ }),
+        //~ triangles.end()
+    //~ );
+
+    //~ points.resize(N-3);
+
+    //~ //----------------------------------------------------------
+    //~ // Step 4: TODO Sloan constraint enforcement
+    //~ //----------------------------------------------------------
+//~ }
+
 void Delaunay2D::triangulate()
 {
     triangles.clear();
     if(points.size() < 3) return;
 
-    //----------------------------------------------------------
-    // Step 1: Super triangle
-    //----------------------------------------------------------
+    // --------------------------------------------------
+    // Super-triangle
+    // --------------------------------------------------
     double minX=points[0].x, minY=points[0].y;
     double maxX=points[0].x, maxY=points[0].y;
 
@@ -126,114 +290,90 @@ void Delaunay2D::triangulate()
         maxY = std::max(maxY,p.y);
     }
 
-    double dx = maxX-minX;
-    double dy = maxY-minY;
-    double delta = std::max(dx,dy);
+    double dx = maxX - minX;
+    double dy = maxY - minY;
+    double delta = 10.0 * std::max(dx,dy);
 
-    Vec2 p1(minX-10*delta, minY-10*delta);
-    Vec2 p2(maxX+10*delta, minY-10*delta);
-    Vec2 p3((minX+maxX)/2.0, maxY+10*delta);
+    int N0 = (int)points.size();
 
-    int i1 = (int)points.size();
-    int i2 = i1+1;
-    int i3 = i1+2;
+    points.emplace_back(minX - delta, minY - delta);
+    points.emplace_back(maxX + delta, minY - delta);
+    points.emplace_back(0.5*(minX+maxX), maxY + delta);
 
-    points.push_back(p1);
-    points.push_back(p2);
-    points.push_back(p3);
+    triangles.push_back({N0, N0+1, N0+2});
 
-    triangles.push_back({i1,i2,i3});
-
-    //----------------------------------------------------------
-    // Step 2: Insert points incrementally
-    //----------------------------------------------------------
-    int real_points = (int)points.size()-3;
-
-    for(int i=0; i<real_points; ++i){
-
+    // --------------------------------------------------
+    // Insert points
+    // --------------------------------------------------
+    for(int i=0; i<N0; ++i)
+    {
         std::vector<std::array<int,3>> bad;
 
-        for(auto& t : triangles){
+        for(const auto& t : triangles){
             if(circumcircle_contains(t, points[i]))
                 bad.push_back(t);
         }
 
-        //------------------------------------------------------
-        // Find polygon cavity boundary
-        //------------------------------------------------------
-        std::vector<Edge2D> polygon;
+        // ----------------------------------------------
+        // Build cavity boundary (edge count)
+        // ----------------------------------------------
+        std::map<std::pair<int,int>, int> edge_count;
 
-        for(auto& t : bad){
+        auto add_edge = [&](int a, int b){
+            if(a > b) std::swap(a,b);
+            edge_count[{a,b}]++;
+        };
 
-            Edge2D edges[3] = {
-                Edge2D(t[0],t[1]),
-                Edge2D(t[1],t[2]),
-                Edge2D(t[2],t[0])
-            };
-
-            for(auto& e : edges){
-
-                bool shared=false;
-
-                for(auto& ot : bad){
-                    if(t==ot) continue;
-
-                    Edge2D oe[3] = {
-                        Edge2D(ot[0],ot[1]),
-                        Edge2D(ot[1],ot[2]),
-                        Edge2D(ot[2],ot[0])
-                    };
-
-                    if(edges_equal(e,oe[0]) ||
-                       edges_equal(e,oe[1]) ||
-                       edges_equal(e,oe[2])){
-                        shared=true;
-                        break;
-                    }
-                }
-
-                if(!shared)
-                    polygon.push_back(e);
-            }
+        for(const auto& t : bad){
+            add_edge(t[0],t[1]);
+            add_edge(t[1],t[2]);
+            add_edge(t[2],t[0]);
         }
 
-        //------------------------------------------------------
+        // ----------------------------------------------
         // Remove bad triangles
-        //------------------------------------------------------
+        // ----------------------------------------------
         triangles.erase(
             std::remove_if(triangles.begin(), triangles.end(),
-            [&](const std::array<int,3>& t){
-                return std::find(bad.begin(),bad.end(),t)!=bad.end();
-            }),
+                [&](const std::array<int,3>& t){
+                    return std::find(bad.begin(),bad.end(),t)!=bad.end();
+                }),
             triangles.end()
         );
 
-        //------------------------------------------------------
+        // ----------------------------------------------
         // Retriangulate cavity
-        //------------------------------------------------------
-        for(auto& e : polygon){
-            triangles.push_back({e.a,e.b,i});
+        // ----------------------------------------------
+        for(const auto& [e,count] : edge_count){
+            if(count != 1) continue;
+
+            int a = e.first;
+            int b = e.second;
+
+            // asegurar CCW
+            if(orient2d(points[a], points[b], points[i]) < 0)
+                std::swap(a,b);
+
+            // evitar degenerados
+            if(a==b || a==i || b==i) continue;
+
+            triangles.push_back({a,b,i});
         }
     }
 
-    //----------------------------------------------------------
-    // Step 3: Remove super triangle triangles
-    //----------------------------------------------------------
-    int N = (int)points.size();
-
+    // --------------------------------------------------
+    // Remove super-triangle triangles
+    // --------------------------------------------------
     triangles.erase(
         std::remove_if(triangles.begin(), triangles.end(),
-        [&](const std::array<int,3>& t){
-            return (t[0]>=N-3 || t[1]>=N-3 || t[2]>=N-3);
-        }),
+            [&](const std::array<int,3>& t){
+                return t[0]>=N0 || t[1]>=N0 || t[2]>=N0;
+            }),
         triangles.end()
     );
 
-    points.resize(N-3);
-
-    //----------------------------------------------------------
-    // Step 4: TODO Sloan constraint enforcement
-    //----------------------------------------------------------
+    points.resize(N0);
 }
+
 
 } // namespace mesh_adapt
