@@ -47,24 +47,29 @@ public:
         bool end = false;
         int it = 0;
         //for(int it=0; it<2; ){ //// ONLY FOR DEBUG
-        while (!end){
+        while (!end ){
             std::cout << "\n--- Iteration " << it << " ---\n";
 
             int n_subdivide = count_edges_to_subdivide();
             std::cout << "Edges marked for subdivision: " << n_subdivide << "\n";
             //if(n_subdivide == 0) break;
-            if(n_subdivide == prev_n_subdivide) end = true;
-            prev_n_subdivide = n_subdivide;
+
 
             //classify_quads();
-            debug_quad(467);
-            debug_quad(500);
+            debug_quad(1422);
             // Marcar edges según patrones
             mark_edges_for_subdivision();
             debug_nonconforming_edges();
-            if (!has_nonconforming_edge())
-              break;
+            // THIS DOES NNOT 
+            //~ if (!has_nonconforming_edge())
+              //~ break;
 
+            if(n_subdivide == prev_n_subdivide) {
+              if (!has_nonconforming_edge())
+              end = true;
+            }
+            prev_n_subdivide = n_subdivide;
+            
             // Subdividir quads
             //subdivide_quads();
 
@@ -72,6 +77,7 @@ public:
             //update_edge_map();
             it ++;
         }
+        
     }
 
     void debug_edge_map() const {
