@@ -16,75 +16,6 @@ enum QuadPattern {
     PAT_FULL
 };
 
-////to be deleted
-class QuadClassifier
-{
-public:
-    QuadClassifier(
-        const std::vector<Quad>& quads,
-        const std::map<Edge, EdgeInfo>& edge_map
-    ) : quads_(quads), edge_map_(edge_map) {}
-
-    void classify(std::vector<QuadPattern>& patterns,
-                  std::vector<int>& rotations) const
-    {
-        patterns.clear();
-        rotations.clear();
-
-        for(const auto& q : quads_) {
-            std::array<bool,4> edge_sub = {false,false,false,false};
-
-            for(int i=0;i<4;++i){
-                Edge e(q[i], q[(i+1)%4]);
-                auto it = edge_map_.find(e);
-                edge_sub[i] = (it != edge_map_.end()) ? it->second.subdivide : false;
-            }
-
-            // calcular patrón y rotación (igual que antes)
-            std::vector<int> refined_edges;
-            for(int i=0;i<4;++i)
-                if(edge_sub[i]) refined_edges.push_back(i);
-
-            int n = refined_edges.size();
-            QuadPattern pat;
-            int rot = 0;
-
-            switch(n){
-                case 0: pat = PAT_NONE; rot=0; break;
-                case 1: pat = PAT_ONE; rot = refined_edges[0]; break;
-                //~ case 2:
-                    //~ if((refined_edges[1]-refined_edges[0]+4)%4==1)
-                        //~ { pat = PAT_TWO_ADJ_LEFT; rot = refined_edges[0]; }
-                    //~ else
-                        //~ { pat = PAT_TWO_OPP; rot = refined_edges[0]; }
-                    //~ break;
-                case 2:
-                {
-                    int diff = (refined_edges[1]-refined_edges[0]+4)%4;
-                    if(diff == 1)
-                        { pat = PAT_TWO_ADJ_LEFT; rot = refined_edges[0]; }
-                    else if(diff == 3) // equivalente a -1 mod 4
-                        { pat = PAT_TWO_ADJ_RIGHT; rot = refined_edges[1]; } 
-                    else
-                        { pat = PAT_TWO_OPP; rot = refined_edges[0]; }
-                    break;
-                }
-                case 3: pat = PAT_THREE; rot = 0; break;
-                case 4: pat = PAT_FULL; rot = 0; break;
-            }
-
-            patterns.push_back(pat);
-            rotations.push_back(rot);
-        }
-    }
-
-private:
-    const std::vector<Quad>& quads_;
-    const std::map<Edge, EdgeInfo>& edge_map_;
-};
-
-
-
 inline void classify_quad(
     const Quad& q,
     const std::map<Edge, EdgeInfo>& edge_map,
@@ -94,6 +25,7 @@ inline void classify_quad(
 {
     std::array<bool,4> edge_sub = {false,false,false,false};
 
+    // Detectar qué edges están subdivididos
     for(int i = 0; i < 4; ++i)
     {
         Edge e(q[i], q[(i+1)%4]);
@@ -105,49 +37,67 @@ inline void classify_quad(
     for(int i = 0; i < 4; ++i)
         if(edge_sub[i]) refined.push_back(i);
 
-    switch(refined.size())
+    const int n = refined.size();
+
+    switch(n)
     {
         case 0:
             pat = PAT_NONE;
             rot = 0;
-            break;
+            return;
 
         case 1:
             pat = PAT_ONE;
             rot = refined[0];
-            break;
+            return;
 
         case 2:
         {
-            int diff = (refined[1] - refined[0] + 4) % 4;
-            if(diff == 1)
-            {
-                pat = PAT_TWO_ADJ_LEFT;
-                rot = refined[0];
-            }
-            else if(diff == 3)
-            {
-                pat = PAT_TWO_ADJ_RIGHT;
-                rot = refined[1];
-            }
-            else
+            int e0 = refined[0];
+            int e1 = refined[1];
+
+            // --------- Opuestos ----------
+            if( (e0 + 2) % 4 == e1 )
             {
                 pat = PAT_TWO_OPP;
-                rot = refined[0];
+                rot = e0;   // rot determinística
+                return;
             }
-            break;
+
+            // --------- Adyacentes ----------
+            // Buscamos la rotación i tal que:
+            // edge i y edge i+1 estén ambos refinados.
+            for(int i = 0; i < 4; ++i)
+            {
+                if(edge_sub[i] && edge_sub[(i+1)%4])
+                {
+                    pat = PAT_TWO_ADJ_LEFT;
+                    rot = i;
+                    return;
+                }
+            }
+
+            // Si llegamos acá algo está inconsistente
+            pat = PAT_NONE;
+            rot = 0;
+            return;
         }
 
         case 3:
             pat = PAT_THREE;
             rot = 0;
-            break;
+            return;
 
         case 4:
             pat = PAT_FULL;
             rot = 0;
-            break;
+            return;
     }
+
+    // fallback defensivo
+    pat = PAT_NONE;
+    rot = 0;
 }
+
 
 }

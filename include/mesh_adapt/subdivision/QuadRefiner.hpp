@@ -57,9 +57,13 @@ public:
             prev_n_subdivide = n_subdivide;
 
             //classify_quads();
-
+            debug_quad(467);
+            debug_quad(500);
             // Marcar edges según patrones
             mark_edges_for_subdivision();
+            debug_nonconforming_edges();
+            if (!has_nonconforming_edge())
+              break;
 
             // Subdividir quads
             //subdivide_quads();
@@ -96,10 +100,6 @@ public:
         return count;
     }
 
-    void classify_quads() {
-        QuadClassifier qc(quads_, edge_map_);
-        qc.classify(quad_patterns_, quad_rotations_);
-    }
 
     bool neighbor_is_refined(const Edge& e) const
     {
@@ -150,6 +150,50 @@ inline bool is_external_node(int nid) const {
 inline int count_external_nodes(const Edge& e) const {
     return is_external_node(e.a) + is_external_node(e.b);
 }
+
+void debug_nonconforming_edges() const
+{
+    for(const auto& [e, info] : edge_map_)
+    {
+        if(!info.subdivide) continue;
+
+        int refined_quads = 0;
+
+        for(const auto& [qid, _] : info.quad_refs)
+        {
+            if(quad_patterns_[qid] != PAT_NONE)
+                refined_quads++;
+        }
+
+        if(refined_quads == 1 && info.quad_refs.size() == 2)
+        {
+            std::cout << "[NON-CONFORMING EDGE] ("
+                      << e.a << "," << e.b << ") "
+                      << " refined_quads=" << refined_quads
+                      << " total_quads=" << info.quad_refs.size()
+                      << "\n";
+        }
+    }
+}
+
+bool has_nonconforming_edge() const
+{
+    for(const auto& [e, info] : edge_map_)
+    {
+        if(!info.subdivide) continue;
+
+        int refined_quads = 0;
+
+        for(const auto& [qid, _] : info.quad_refs)
+            if(quad_patterns_[qid] != PAT_NONE)
+                refined_quads++;
+
+        if(refined_quads == 1 && info.quad_refs.size() == 2)
+            return true;
+    }
+    return false;
+}
+
 
 void mark_edges_for_subdivision()
 {
@@ -255,14 +299,20 @@ void mark_edges_for_subdivision()
 }
     
 
-    void subdivide_quads() {
-        // Aquí implementas la subdivisión real de quads y actualización de quads_
-    }
+void debug_quad(int qid) const
+{
+    std::cout << "Quad " << qid << "\n";
 
-    void update_edge_map() {
-        // Actualizar los EdgeInfo de edges nuevos creados
-    }
-    
+    std::cout << "  Pattern: " << quad_patterns_[qid] << "\n";
+    std::cout << "  Rotation: " << quad_rotations_[qid] << "\n";
+
+    const auto& q = quads_[qid];
+    std::cout << "  Nodes: "
+              << q[0] << " "
+              << q[1] << " "
+              << q[2] << " "
+              << q[3] << "\n";
+}
 
 SubdivisionResult subdivide_quads_with_nodes(const std::vector<Node2D>& nodes) const {
     SubdivisionResult result;
